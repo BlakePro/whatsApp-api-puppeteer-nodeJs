@@ -1,0 +1,25 @@
+{
+  "name": "WhatsAppWebApi",
+  "version": "1.0.0",
+  "description": "WhatsAppWeb API via Puppeteer",
+  "main": "indexWhatsApp.js",
+  "scripts": {
+    "start": "node indexWhatsApp.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Cristian Yosafat Hernández Ruiz",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "helmet": "^3.22.0",
+    "http-proxy": "^1.18.0",
+    "lowdb": "^1.0.0",
+    "node-fetch": "^2.6.0",
+    "node-port-check": "^2.0.1",
+    "puppeteer": "^2.1.1",
+    "qrcode-terminal": "^0.12.0",
+    "yaqrcode": "^0.2.1"
+  }
+}
