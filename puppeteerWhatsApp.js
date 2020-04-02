@@ -295,7 +295,7 @@ class PuppeteerWhatsApp extends EventEmitter{
       const pages_created = await browser.pages();
       return {browser: browser, page: pages_created[0]}
     }catch(e){
-      return null;
+      return {browser: null, page: null}
     }
   }
 
@@ -535,6 +535,7 @@ class PuppeteerWhatsApp extends EventEmitter{
                 if(typeof data_token === 'undefined' || typeof data_token.endpoint === 'undefined' || data_token.endpoint == null || data_token.endpoint == ''){
                   res.json({response: 'Not defined login', status: false});
                 }else{
+
                   const number = req.body.number;
                   const message = req.body.message;
 
@@ -587,7 +588,7 @@ class PuppeteerWhatsApp extends EventEmitter{
                         break;
                       }
                     }else{
-                      WhatsAppDB.get('token').find({name: token}).assign({localstorage: null, endpoint: null, bot_url: null, webhook_url: null}).write();
+                      WhatsAppDB.get('token').find({name: token}).assign({endpoint: null}).write();
                       res.json({response: 'Invalid page', status: false});
                       return false;
                     }
