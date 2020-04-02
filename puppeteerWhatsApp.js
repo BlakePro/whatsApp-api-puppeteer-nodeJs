@@ -305,7 +305,6 @@ class PuppeteerWhatsApp extends EventEmitter{
       try{
         window.App.sendSeen(id);
         const get_id = window.Store.Chat.get(id);
-        console.log(typeof message);
         if(typeof message === 'string' && message != ''){
           window.App.sendMessage(get_id, message);
           return {number: id, status: true};
@@ -325,7 +324,12 @@ class PuppeteerWhatsApp extends EventEmitter{
   //CHECKED
   async getMe(page){
     return await page.evaluate(() => {
-      try{return window.Store.Conn.serialize();}
+      try{
+        var me = window.Store.Conn.serialize();
+        var id = me.me._serialized;
+        me.picture = window.Store.ProfilePicThumb.get(id).serialize();
+        return me;
+      }
       catch(e){/*console.log(e)*/};
       return {};
     })
@@ -427,16 +431,29 @@ class PuppeteerWhatsApp extends EventEmitter{
   async sendMessage(page, id, message){
     if(typeof id === 'string' && id != '')var id = [id];
     if(typeof id === 'object' && id.length > 0){
+      var no_ids = id.length;
+      var max = 3500;
+      var number_op = Math.ceil(no_ids/max);
+      var to_time = 3304;
+      switch(number_op){
+        case 1: to_time = 4951; break;
+        case 2: to_time = 4478; break;
+        case 3: to_time = 3936; break;
+        case 4: to_time = 3582; break;
+        case 5: to_time = 3033; break;
+        case 6: to_time = 2791; break;
+        default: to_time = 3304; break;
+      }
       var time = 0;
       id.forEach((from) => {
-        new Promise((resolve, reject) => {
-          setTimeout(() => {
+        setTimeout(() => {
+          new Promise((resolve, reject) => {
             this.sendMessageToID(page, from, message);
-          }, time);
-          time += 1633;
-        });
+          });
+        }, time);
+        time += to_time;
       })
-      return id.length;
+      return no_ids;
     }
   }
 
@@ -488,91 +505,99 @@ class PuppeteerWhatsApp extends EventEmitter{
         });
 
         ws.post('/', (req, res) => {
-          var json = {}
-          const token = (req.body.token).trim();
-          const action = (req.body.action).trim();
+          if(typeof req.body === 'object' && typeof req.body.token === 'string'  && typeof req.body.action === 'string'){
+            var json = {}
+            const token = (req.body.token).trim();
+            const action = (req.body.action).trim();
 
-          if(token == '')res.json({response: 'Not allowed empty token', status: true});
-          else if(action == '')res.json({response: 'Not allowed empty action', status: true});
-          else{
-            const WhatsApp = this;
-            if(action == 'start'){
+            if(token == '')res.json({response: 'Not allowed empty token', status: true});
+            else if(action == '')res.json({response: 'Not allowed empty action', status: true});
+            else{
+              const WhatsApp = this;
+              if(action == 'start'){
 
-              if(typeof req.body.bot_url === 'string' && (req.body.bot_url).trim() != '' && WhatsApp.isUrl(req.body.bot_url))var bot_url = (req.body.bot_url).trim();
-              else var bot_url = '';
+                if(typeof req.body.bot_url === 'string' && (req.body.bot_url).trim() != '' && WhatsApp.isUrl(req.body.bot_url))var bot_url = (req.body.bot_url).trim();
+                else var bot_url = '';
 
-              if(typeof req.body.webhook_url === 'string' && (req.body.webhook_url).trim() != '' && WhatsApp.isUrl(req.body.webhook_url))var webhook_url = (req.body.webhook_url).trim();
-              else var webhook_url = '';
+                if(typeof req.body.webhook_url === 'string' && (req.body.webhook_url).trim() != '' && WhatsApp.isUrl(req.body.webhook_url))var webhook_url = (req.body.webhook_url).trim();
+                else var webhook_url = '';
 
-              WhatsApp.start(token, headless, bot_url, webhook_url);
+                WhatsApp.start(token, headless, bot_url, webhook_url);
 
-              WhatsApp.on('API', json => {
-                try{res.json(json)}
-                catch(e){/*console.log(e);*/}
-              });
-
-            }else{
-              const WhatsAppDB = WhatsApp.getDatabaseToken();
-              const data_token = WhatsAppDB.get('token').find({name: token}).value();
-
-              if(typeof data_token === 'undefined' || typeof data_token.endpoint === 'undefined'){
-                res.json({response: 'Not defined token', status: false});
-              }else{
-                const number = req.body.number;
-                const message = req.body.message;
-
-                WhatsApp.getWebSocketPage(data_token.endpoint).then(json_page => {
-                  var page = json_page.page;
-                  var browser = json_page.browser;
-                  if(page != null){
-                    switch(action){
-                      case 'me':
-                        WhatsApp.getMe(page).then(response => res.json(response));
-                      break;
-                      case 'contact':
-                        WhatsApp.getContact(page, number).then(response => res.json(response));
-                      break;
-                      case 'avatar':
-                        WhatsApp.getProfilePicThumb(page, number).then(response => res.json(response));
-                      break;
-                      case 'chat':
-                        WhatsApp.getChat(page).then(response => res.json(response));
-                      break;
-                      case 'unread':
-                        WhatsApp.getChatUnread(page).then(response => res.json(response));
-                      break;
-                      case 'seen':
-                        WhatsApp.setContactSeen(page, number).then(response => res.json(response));
-                      break;
-                      case 'message':
-                        WhatsApp.sendMessage(page, number, message).then(response => res.json(response));
-                      break;
-                      case 'logout':
-                        WhatsApp.setLogout(page).then(response => {
-                          setTimeout(() => {
-                            if(typeof browser !== null && typeof token !== 'undefined'){
-                              WhatsAppDB.get('token').find({name: token}).assign({localstorage: null, endpoint: null, bot_url: null, webhook_url: null}).write();
-                              WhatsApp.setDestroy(browser, page, token, port);
-                            }
-                          }, 1500);
-                          res.json(response);
-                        });
-                      break;
-                      //REVIEW
-                      case 'getNavigatorStorage':
-                        WhatsApp.getNavigatorStorage(page).then(response => res.json(response));
-                      break;
-                      case 'loadEarlierMsgstById':
-                        WhatsApp.loadEarlierMsgstById(page, person).then(response => res.json(response));
-                      break;
-                      default:
-                        res.json({response: 'Action not available: ' + action, status: false});
-                      break;
-                    }
-                  }
+                WhatsApp.on('API', json => {
+                  try{res.json(json)}
+                  catch(e){/*console.log(e);*/}
                 });
+
+              }else{
+                const WhatsAppDB = WhatsApp.getDatabaseToken();
+                const data_token = WhatsAppDB.get('token').find({name: token}).value();
+                if(typeof data_token === 'undefined' || typeof data_token.endpoint === 'undefined' || data_token.endpoint == null || data_token.endpoint == ''){
+                  res.json({response: 'Not defined login', status: false});
+                }else{
+                  const number = req.body.number;
+                  const message = req.body.message;
+
+                  WhatsApp.getWebSocketPage(data_token.endpoint).then(json_page => {
+                    if(json_page != null && typeof json_page === 'object' && typeof json_page.page !== 'undefined' && json_page.page != null){
+                      var page = json_page.page;
+                      var browser = json_page.browser;
+                      switch(action){
+                        case 'me':
+                          WhatsApp.getMe(page).then(response => res.json(response));
+                        break;
+                        case 'contact':
+                          WhatsApp.getContact(page, number).then(response => res.json(response));
+                        break;
+                        case 'avatar':
+                          WhatsApp.getProfilePicThumb(page, number).then(response => res.json(response));
+                        break;
+                        case 'chat':
+                          WhatsApp.getChat(page).then(response => res.json(response));
+                        break;
+                        case 'unread':
+                          WhatsApp.getChatUnread(page).then(response => res.json(response));
+                        break;
+                        case 'seen':
+                          WhatsApp.setContactSeen(page, number).then(response => res.json(response));
+                        break;
+                        case 'message':
+                          WhatsApp.sendMessage(page, number, message).then(response => res.json(response));
+                        break;
+                        case 'logout':
+                          WhatsApp.setLogout(page).then(response => {
+                            setTimeout(() => {
+                              if(typeof browser !== null && typeof token !== 'undefined'){
+                                WhatsAppDB.get('token').find({name: token}).assign({localstorage: null, endpoint: null, bot_url: null, webhook_url: null}).write();
+                                WhatsApp.setDestroy(browser, page, token, port);
+                              }
+                            }, 1500);
+                            res.json(response);
+                          });
+                        break;
+                        //REVIEW
+                        case 'getNavigatorStorage':
+                          WhatsApp.getNavigatorStorage(page).then(response => res.json(response));
+                        break;
+                        case 'loadEarlierMsgstById':
+                          WhatsApp.loadEarlierMsgstById(page, person).then(response => res.json(response));
+                        break;
+                        default:
+                          res.json({response: 'Action not available: ' + action, status: false});
+                        break;
+                      }
+                    }else{
+                      WhatsAppDB.get('token').find({name: token}).assign({localstorage: null, endpoint: null, bot_url: null, webhook_url: null}).write();
+                      res.json({response: 'Invalid page', status: false});
+                      return false;
+                    }
+                  })
+                }
               }
             }
+          }else{
+            res.json({response: 'Invalid params', status: false});
+            return false;
           }
         });
       }else{
