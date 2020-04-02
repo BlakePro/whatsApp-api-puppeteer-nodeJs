@@ -2,8 +2,8 @@ const puppeteerWhatsApp = require('./puppeteerWhatsApp');
 const qrcode_terminal = require('qrcode-terminal');
 
 //CREATE WHATSAPP PORT AND HEADLESS (DEBUG) CONFIGURATION
-const headless = false;
-const port = 9000;
+const headless = true;
+const port = 80;
 
 //NEW WHATSAPP PUPPETEER
 const WhatsApp = new puppeteerWhatsApp();
