@@ -208,7 +208,7 @@ class PuppeteerWhatsApp extends EventEmitter{
           this.emit('CONSOLE', value, true);
           this.emit('API', {action: 'ready', value: value, data: me, status: true});
         });
-      }, 2500);
+      }, 2000);
 
     }else{
       await browser.close();
@@ -220,6 +220,7 @@ class PuppeteerWhatsApp extends EventEmitter{
       var time = new Date();
       if(typeof message === 'object' && typeof message.apiToken !== 'undefined' && typeof message.from !== 'undefined'){
         console.log(message);
+
         const token = message.apiToken;
         const WhatsAppDB = WhatsApp.getDatabaseToken();
         const data_token = WhatsAppDB.get('token').find({name: token}).value();
@@ -228,53 +229,74 @@ class PuppeteerWhatsApp extends EventEmitter{
           console.log({response: 'Not defined token', status: false});
           return false;
         }else{
-          if(typeof data_token.bot_url !== 'undefined' && data_token.bot_url != null){
-            console.log(data_token.endpoint);
 
-            WhatsApp.getWebSocketPage(data_token.endpoint).then(json_page => {
-              if(typeof json_page === 'object'){
-                var page = json_page.page;
-                var browser = json_page.browser;
-                if(page != null){
-                  var bot_url = data_token.bot_url;
-                  console.log(bot_url);
-                  var from = message.from;
-                  var send = {
-                    method: 'post',
-                    body: JSON.stringify({token: token, message: message.body, data: JSON.stringify(message)}),
-                    headers: {'Content-Type': 'application/json'}
-                  };
+          //BOT MESSAGE
+          new Promise((resolve, reject) => {
+            if(typeof data_token.bot_url !== 'undefined' && data_token.bot_url != null){
+              WhatsApp.getWebSocketPage(data_token.endpoint).then(json_page => {
+                if(typeof json_page === 'object'){
+                  var page = json_page.page;
+                  var browser = json_page.browser;
+                  if(page != null){
+                    var bot_url = data_token.bot_url;
+                    var from = message.from;
+                    var send = {
+                      method: 'post',
+                      body: JSON.stringify({token: token, message: message.body, data: JSON.stringify(message)}),
+                      headers: {'Content-Type': 'application/json'}
+                    };
 
-                  fetch(bot_url, send).then(res => res.json()).then(parsed => {
-                    if(typeof parsed === 'object' && parsed.status == true && typeof parsed.message !== 'undefined'){
-                      var bot_message = parsed.message;
-                      console.log('sendMessage');
-                      console.log(token);
-                      console.log(from);
-                      console.log(bot_message);
-                      WhatsApp.sendMessage(page, from, bot_message);
-                      //WhatsApp.sendMediaToID(from, parsed.caption, parsed.base64, parsed.filename);
-                    }
-                  })
+                    fetch(bot_url, send).then(res => res.json()).then(parsed => {
+                      if(typeof parsed === 'object' && parsed.status == true && typeof parsed.message !== 'undefined'){
+                        var bot_message = parsed.message;
+                        console.log('sendMessage');
+                        console.log(token);
+                        console.log(from);
+                        console.log(bot_message);
+                        WhatsApp.sendMessage(page, from, bot_message);
+                        //WhatsApp.sendMediaToID(from, parsed.caption, parsed.base64, parsed.filename);
+                      }
+                    })
+                  }
                 }
-              }
-            })
-          }
+              })
+            }
+          });
+
+          //WEBHOOK
+          new Promise((resolve, reject) => {
+            if(typeof data_token.webhook_url !== 'undefined' && data_token.webhook_url != null){
+              var webhook_url = data_token.webhook_url;
+              try{
+                var send = {method: 'post', body: JSON.stringify(message), headers: {'Content-Type': 'application/json'}};
+                fetch(webhook_url, send).catch(e => {return false});
+              }catch(e){}
+            }
+          });
+
         }
       }
     })
   }
 
   isUrl(url){
-    var regex = new RegExp("^(http[s]?:\\/\\/(www\\.)?|ftp:\\/\\/(www\\.)?|www\\.){1}([0-9A-Za-z-\\.@:%_\+~#=]+)+((\\.[a-zA-Z]{2,3})+)(/(.)*)?(\\?(.)*)?");
-    if(regex.test(url))return true;
-    else return false;
+    try{
+      const data_url = new URL(url);
+      if(typeof data_url !== 'undefined' && typeof data_url.host !== 'undefined' &&  data_url.host != ''){
+        return true;
+      }else{
+        return false;
+      }
+    }catch(e){
+      return false;
+    }
   }
 
   getDatabaseToken(){
     var low = require('lowdb');
     var FileSync = require('lowdb/adapters/FileSync');
-    var adapter = new FileSync('dbTokenWhatsApp.json');
+    var path = require('path');
+    var adapter = new FileSync(path.join(__dirname, 'dbTokenWhatsApp.json'));
     var db = low(adapter);
     db.defaults({token: []}).write();
     return db;
@@ -314,10 +336,10 @@ class PuppeteerWhatsApp extends EventEmitter{
               window.App.sendMessage(get_id, data_message);
             }
           });
-          return true;
+          return {status_code: 200};
         }
       }catch(e){/*console.log(e)*/}
-      return false;
+      return {};
     }, id, message)
   }
 
@@ -502,16 +524,28 @@ class PuppeteerWhatsApp extends EventEmitter{
         server.listen(port, () => {
           var data_address = server.address();
           console.log('START WEB SERVICE ON ' + data_address.address + data_address.port);
+          return ws;
         });
 
-        ws.post('/', (req, res) => {
+        ws.all('*', (req, res, next) => {
+          if(typeof req.url !== 'undefined' && req.url === '/api') return next();
+          res.json({response: 'Hello WhatsApp', status_code: 201});
+          return false;
+        });
+
+        ws.get('/api', (req, res) => {
+          res.json({response: 'WhatsApp Api', status_code: 202});
+          return false;
+        });
+
+        ws.post('/api', (req, res) => {
           if(typeof req.body === 'object' && typeof req.body.token === 'string'  && typeof req.body.action === 'string'){
             var json = {}
             const token = (req.body.token).trim();
             const action = (req.body.action).trim();
 
-            if(token == '')res.json({response: 'Not allowed empty token', status: true});
-            else if(action == '')res.json({response: 'Not allowed empty action', status: true});
+            if(token == '')res.json({response: 'Not allowed empty token', status_code: 401});
+            else if(action == '')res.json({response: 'Not allowed empty action', status_code: 402});
             else{
               const WhatsApp = this;
               if(action == 'start'){
@@ -533,7 +567,7 @@ class PuppeteerWhatsApp extends EventEmitter{
                 const WhatsAppDB = WhatsApp.getDatabaseToken();
                 const data_token = WhatsAppDB.get('token').find({name: token}).value();
                 if(typeof data_token === 'undefined' || typeof data_token.endpoint === 'undefined' || data_token.endpoint == null || data_token.endpoint == ''){
-                  res.json({response: 'Not defined login', status: false});
+                  res.json({response: 'Not defined login', status_code: 403});
                 }else{
 
                   const number = req.body.number;
@@ -584,12 +618,12 @@ class PuppeteerWhatsApp extends EventEmitter{
                           WhatsApp.loadEarlierMsgstById(page, person).then(response => res.json(response));
                         break;
                         default:
-                          res.json({response: 'Action not available: ' + action, status: false});
+                          res.json({response: 'Action not available: ' + action, status_code: 404});
                         break;
                       }
                     }else{
                       WhatsAppDB.get('token').find({name: token}).assign({endpoint: null}).write();
-                      res.json({response: 'Invalid page', status: false});
+                      res.json({response: 'Invalid page', status_code: 405});
                       return false;
                     }
                   })
@@ -597,12 +631,14 @@ class PuppeteerWhatsApp extends EventEmitter{
               }
             }
           }else{
-            res.json({response: 'Invalid params', status: false});
+            res.json({response: 'Invalid params', status_code: 406});
             return false;
           }
+          return false;
         });
       }else{
-        console.log('ALREADY LISTEN ON ' + APP_HOST + ':' + port);
+        console.log('ALREADY LISTEN ' + APP_HOST + ':' + port);
+        return false;
       }
     }
   }

@@ -3,7 +3,7 @@ const qrcode_terminal = require('qrcode-terminal');
 
 //CREATE WHATSAPP PORT AND HEADLESS (DEBUG) CONFIGURATION
 const headless = true;
-const port = 80;
+const port = 443;
 
 //NEW WHATSAPP PUPPETEER
 const WhatsApp = new puppeteerWhatsApp();
@@ -27,10 +27,6 @@ WhatsApp.on('MESSAGE', (message) => {
 });
 
 /*
-WhatsApp.on('MESSAGE', message => {
-  console.log(message);
-});
-
 WhatsApp.on('MEDIA', media => {
   console.log(media);
 });
