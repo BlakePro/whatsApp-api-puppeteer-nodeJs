@@ -456,7 +456,7 @@ class PuppeteerWhatsApp extends EventEmitter{
       var no_ids = id.length;
       var max = 3500;
       var number_op = Math.ceil(no_ids/max);
-      var to_time = 3304;
+      var to_time = 3582;
       switch(number_op){
         case 1: to_time = 4951; break;
         case 2: to_time = 4478; break;
@@ -466,7 +466,7 @@ class PuppeteerWhatsApp extends EventEmitter{
         case 6: to_time = 2791; break;
         default: to_time = 3304; break;
       }
-      var time = 0;
+      var time = 997;
       id.forEach((from) => {
         setTimeout(() => {
           new Promise((resolve, reject) => {
