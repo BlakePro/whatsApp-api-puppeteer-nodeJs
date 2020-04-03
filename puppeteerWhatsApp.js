@@ -219,7 +219,7 @@ class PuppeteerWhatsApp extends EventEmitter{
     new Promise((resolve, reject) => {
       var time = new Date();
       if(typeof message === 'object' && typeof message.apiToken !== 'undefined' && typeof message.from !== 'undefined'){
-        console.log(message);
+        //console.log(message);
 
         const token = message.apiToken;
         const WhatsAppDB = WhatsApp.getDatabaseToken();
@@ -249,10 +249,10 @@ class PuppeteerWhatsApp extends EventEmitter{
                     fetch(bot_url, send).then(res => res.json()).then(parsed => {
                       if(typeof parsed === 'object' && parsed.status == true && typeof parsed.message !== 'undefined'){
                         var bot_message = parsed.message;
-                        console.log('sendMessage');
+                        /*console.log('sendMessage');
                         console.log(token);
                         console.log(from);
-                        console.log(bot_message);
+                        console.log(bot_message);*/
                         WhatsApp.sendMessage(page, from, bot_message);
                         //WhatsApp.sendMediaToID(from, parsed.caption, parsed.base64, parsed.filename);
                       }
