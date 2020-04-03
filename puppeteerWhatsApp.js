@@ -15,6 +15,7 @@ const APP_KEEP_PHONE_CONNECTED_SELECTOR = '[data-asset-intro-image="true"]';
 const APP_QR_VALUE_SELECTOR = '[data-ref]';
 const APP_LANGUAGE = 'es';
 const APP_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36';
+const APP_DEBUG = true;
 
 //PUPPETEER WHATSAPP CLASS
 class PuppeteerWhatsApp extends EventEmitter{
@@ -111,12 +112,19 @@ class PuppeteerWhatsApp extends EventEmitter{
     }else this.emit('CONSOLE', 'CREATE NEW TOKEN', true);
 
     //GOTO URL
-    this.emit('CONSOLE', 'EVALUATING', true);
-    await page.goto(APP_URI, {waitUntil: "networkidle2", timeout: 9000});
+    try{
+      this.emit('CONSOLE', 'EVALUATING', true);
+      await page.goto(APP_URI, {waitUntil: 'networkidle2', timeout: 9000});
+    }catch(e){
+      if(APP_DEBUG){
+        console.log('networkidle2');
+        /*console.log(e)*/
+      }
+    }
 
     //VALID INJECT TOKEN SESSION
     try{
-      await page.waitForSelector(APP_QR_VALUE_SELECTOR, {timeout: 3500});
+      await page.waitForSelector(APP_QR_VALUE_SELECTOR, {timeout: 3300});
       const qr_code = await page.evaluate(`document.querySelector("` + APP_QR_VALUE_SELECTOR + `").getAttribute("data-ref")`);
       if(typeof qr_code === 'undefined' || qr_code === null){
         this.emit('CONSOLE', 'NO TOKEN SELECTOR EXISTS', false);
@@ -127,11 +135,16 @@ class PuppeteerWhatsApp extends EventEmitter{
         var qr_base64 = yaqrcode(qr_code, {size: 300});
         this.emit('API', {action: 'token', value: 'Scan token', data: qr_base64, status: true});
       }
-    }catch(e){/*console.log(e);*/}
+    }catch(e){
+      if(APP_DEBUG){
+        console.log('NO SCAN SELECTOR');
+        //console.log(e);
+      }
+    }
 
     //EVALUATE INJECTED TOKEN SESSION
     this.emit('CONSOLE', 'WAITING TOKEN', true);
-    const is_token = await page.waitForSelector(APP_KEEP_PHONE_CONNECTED_SELECTOR, {timeout: 30000}).then(res => {
+    const is_token = await page.waitForSelector(APP_KEEP_PHONE_CONNECTED_SELECTOR, {timeout: 27000}).then(res => {
       this.emit('CONSOLE', 'VALID TOKEN', true);
       return true;
     }).catch(e => {
@@ -249,12 +262,7 @@ class PuppeteerWhatsApp extends EventEmitter{
                     fetch(bot_url, send).then(res => res.json()).then(parsed => {
                       if(typeof parsed === 'object' && parsed.status == true && typeof parsed.message !== 'undefined'){
                         var bot_message = parsed.message;
-                        /*console.log('sendMessage');
-                        console.log(token);
-                        console.log(from);
-                        console.log(bot_message);*/
                         WhatsApp.sendMessage(page, from, bot_message);
-                        //WhatsApp.sendMediaToID(from, parsed.caption, parsed.base64, parsed.filename);
                       }
                     })
                   }
@@ -270,7 +278,7 @@ class PuppeteerWhatsApp extends EventEmitter{
               try{
                 var send = {method: 'post', body: JSON.stringify(message), headers: {'Content-Type': 'application/json'}};
                 fetch(webhook_url, send).catch(e => {return false});
-              }catch(e){}
+              }catch(e){if(APP_DEBUG)console.log(e)}
             }
           });
 
@@ -321,26 +329,37 @@ class PuppeteerWhatsApp extends EventEmitter{
     }
   }
 
+
   //CHECKED - DEPEND App
   async sendMessageToID(page, id, message){
-    return await page.evaluate((id, message) => {
+    return await page.evaluate((id, message, APP_DEBUG) => {
       try{
-        window.App.sendSeen(id);
-        const get_id = window.Store.Chat.get(id);
-        if(typeof message === 'string' && message != ''){
-          window.App.sendMessage(get_id, message);
-          return {number: id, status: true};
-        }else if(Array.isArray(message) && message.length > 0){
-          message.forEach((data_message) => {
-            if(typeof data_message === 'string' && data_message != ''){
-              window.App.sendMessage(get_id, data_message);
+        if(typeof id === 'string'){
+          const number = id.replace(/\D+/g, '');
+          if(number != ''){
+            window.App.sendSeen(id);
+            const get_id = window.Store.Chat.get(id);
+            var replaceNumber = (message, number) => message.replace(/{number}/g, number);
+
+            if(typeof message === 'string' && message != ''){
+              var message = replaceNumber(message, number);
+              window.App.sendMessage(get_id, message);
+              return {number: number, message: message, status_code: 200};
+
+            }else if(Array.isArray(message) && message.length > 0){
+              message.forEach((data_message) => {
+                if(typeof data_message === 'string' && data_message != ''){
+                  var message = replaceNumber(data_message, number);
+                  window.App.sendMessage(get_id, data_message);
+                  return {number: number, message: data_message, status_code: 200};
+                }
+              });
             }
-          });
-          return {status_code: 200};
-        }
-      }catch(e){/*console.log(e)*/}
+          }else return {number: null, message: 'NaN', status_code: 404};
+        }else return {number: null, message: 'NaN', status_code: 404};
+      }catch(e){if(APP_DEBUG)console.log(e)}
       return {};
-    }, id, message)
+    }, id, message, APP_DEBUG)
   }
 
   //CHECKED
@@ -352,7 +371,7 @@ class PuppeteerWhatsApp extends EventEmitter{
         me.picture = window.Store.ProfilePicThumb.get(id).serialize();
         return me;
       }
-      catch(e){/*console.log(e)*/};
+      catch(e){if(APP_DEBUG)console.log(e)};
       return {};
     })
   }
@@ -363,7 +382,7 @@ class PuppeteerWhatsApp extends EventEmitter{
       try{
         if(typeof id === 'undefined' || id == '')return window.Store.Contact.serialize();
         else return window.Store.Contact.get(id).serialize();
-      }catch(e){/*console.log(e)*/};
+      }catch(e){if(APP_DEBUG)console.log(e)};
       return {};
     }, id)
   }
@@ -374,7 +393,7 @@ class PuppeteerWhatsApp extends EventEmitter{
       try{
         if(typeof id === 'undefined' || id == '')return window.Store.ProfilePicThumb.serialize();
         else return window.Store.ProfilePicThumb.get(id).serialize();
-      }catch(e){/*console.log(e)*/};
+      }catch(e){if(APP_DEBUG)console.log(e)};
       return {};
     }, id)
   }
@@ -385,7 +404,7 @@ class PuppeteerWhatsApp extends EventEmitter{
       try{
         if(typeof id === 'undefined' || id == '')return window.Store.Chat.serialize();
         else return window.Store.Chat.get(id).serialize();
-      }catch(e){/*console.log(e)*/};
+      }catch(e){if(APP_DEBUG)console.log(e)};
       return {};
     }, id)
   }
@@ -407,7 +426,7 @@ class PuppeteerWhatsApp extends EventEmitter{
           });
           return chats_unread;
         }
-      }catch(e){/*console.log(e)*/};
+      }catch(e){if(APP_DEBUG)console.log(e)};
       return [];
     })
   }
@@ -419,7 +438,7 @@ class PuppeteerWhatsApp extends EventEmitter{
         try{
           window.Store.Chat.get(id).loadEarlierMsgs();
           return true;
-        }catch(e){/*console.log(e)*/}
+        }catch(e){if(APP_DEBUG)console.log(e)}
       }
       return false;
     }, id)
@@ -432,7 +451,7 @@ class PuppeteerWhatsApp extends EventEmitter{
         try{
           window.App.sendSeen(id);
           return true;
-        }catch(e){/*console.log(e)*/};
+        }catch(e){if(APP_DEBUG)console.log(e)};
       }
       return false;
     }, id)
@@ -445,38 +464,40 @@ class PuppeteerWhatsApp extends EventEmitter{
         window.Store.tag.sendCurrentLogout();
         window.Store.tag.logout();
         return true;
-      }catch(e){/*console.log(e)*/};
+      }catch(e){if(APP_DEBUG)console.log(e)};
       return false;
     })
   }
 
   async sendMessage(page, id, message){
-    if(typeof id === 'string' && id != '')var id = [id];
-    if(typeof id === 'object' && id.length > 0){
-      var no_ids = id.length;
-      var max = 3500;
-      var number_op = Math.ceil(no_ids/max);
-      var to_time = 3582;
-      switch(number_op){
-        case 1: to_time = 4951; break;
-        case 2: to_time = 4478; break;
-        case 3: to_time = 3936; break;
-        case 4: to_time = 3582; break;
-        case 5: to_time = 3033; break;
-        case 6: to_time = 2791; break;
-        default: to_time = 3304; break;
+    try{
+      if(typeof id === 'string' && id != '')var id = [id];
+      if(typeof id === 'object' && id.length > 0){
+        var no_ids = id.length;
+        var max = 3500;
+        var number_op = Math.ceil(no_ids/max);
+        var to_time = 3582;
+        switch(number_op){
+          case 1: to_time = 4951; break;
+          case 2: to_time = 4478; break;
+          case 3: to_time = 3936; break;
+          case 4: to_time = 3582; break;
+          case 5: to_time = 3033; break;
+          case 6: to_time = 2791; break;
+          default: to_time = 3304; break;
+        }
+        var time = 997;
+        id.forEach((from) => {
+          setTimeout(() => {
+            new Promise((resolve, reject) => {
+              this.sendMessageToID(page, from, message);
+            });
+          }, time);
+          time += to_time;
+        })
+        return no_ids;
       }
-      var time = 997;
-      id.forEach((from) => {
-        setTimeout(() => {
-          new Promise((resolve, reject) => {
-            this.sendMessageToID(page, from, message);
-          });
-        }, time);
-        time += to_time;
-      })
-      return no_ids;
-    }
+    }catch(e){if(APP_DEBUG)console.log(e)}
   }
 
   async setDestroy(browser, page, token){
@@ -500,7 +521,7 @@ class PuppeteerWhatsApp extends EventEmitter{
     return await page.evaluate(() => {
       try{
         return navigator.storage.estimate();
-      }catch(e){/*console.log(e)*/}
+      }catch(e){if(APP_DEBUG)console.log(e)}
       return {};
     })
   }
@@ -560,7 +581,7 @@ class PuppeteerWhatsApp extends EventEmitter{
 
                 WhatsApp.on('API', json => {
                   try{res.json(json)}
-                  catch(e){/*console.log(e);*/}
+                  catch(e){if(APP_DEBUG)console.log(e)}
                 });
 
               }else{
