@@ -552,11 +552,11 @@ class PuppeteerWhatsApp extends EventEmitter{
   }
 
   async sendBroadcast(page, message){
-    var to_broadcast = await page.evaluate((message, APP_DEBUG) => {
+    var to_broadcast = await page.evaluate((APP_DEBUG) => {
       var to_broadcast = [];
       try{
         var chats = window.Store.Chat.serialize();
-        if(typeof chats === 'object' && chats.length > 0 && message != ''){
+        if(typeof chats === 'object' && chats.length > 0){
           var no_chats = chats.length;
           chats.forEach((chat) => {
             if(typeof chat.msgs !== 'undefined' && typeof chat.id._serialized !== 'undefined'){
@@ -567,23 +567,26 @@ class PuppeteerWhatsApp extends EventEmitter{
         }
       }catch(e){if(APP_DEBUG)console.log(e)};
       return to_broadcast;
-    }, message, APP_DEBUG);
+    }, APP_DEBUG);
 
-    var no_chats = to_broadcast.length;
-    if(no_chats > 0 && typeof message !== 'undefined' && message.trim() != ''){
+    if(typeof to_broadcast.length !== 'undefined' && to_broadcast.length > 0 && typeof message !== 'undefined' && message.trim() != ''){
+      var no_chats = to_broadcast.length;
       var status_code = 200;
       var send_message = message + "\n\n#{number}";
       this.sendMessage(page, to_broadcast, send_message);
-    }else var status_code = 300;
+    }else{
+      var status_code = 300;
+      var no_chats = 0;
+    }
     return {chats: no_chats, message: message, status_code: status_code};
   }
 
   async sendBroadcastUnread(page, message){
-    var to_broadcast = await page.evaluate((message, APP_DEBUG) => {
+    var to_broadcast = await page.evaluate((APP_DEBUG) => {
       var to_broadcast = [];
       try{
         var chats = window.Store.Chat.serialize();
-        if(typeof chats === 'object' && chats.length > 0 && message != ''){
+        if(typeof chats === 'object' && chats.length > 0){
           var no_chats = chats.length;
           chats.forEach((chat) => {
             if(typeof chat.msgs !== 'undefined' && typeof chat.id._serialized !== 'undefined' && typeof chat.unreadCount !== 'undefined' && typeof chat.msgs !== 'undefined' && chat.unreadCount > 0){
@@ -594,14 +597,17 @@ class PuppeteerWhatsApp extends EventEmitter{
         }
       }catch(e){if(APP_DEBUG)console.log(e)};
       return to_broadcast;
-    }, message, APP_DEBUG);
+    }, APP_DEBUG);
 
-    var no_chats = to_broadcast.length;
-    if(no_chats > 0 && typeof message !== 'undefined' && message.trim() != ''){
+    if(typeof to_broadcast.length !== 'undefined' && to_broadcast.length > 0 && typeof message !== 'undefined' && message.trim() != ''){
+      var no_chats = to_broadcast.length;
       var status_code = 200;
       var send_message = message + "\n\n#{number}";
       this.sendMessage(page, to_broadcast, send_message);
-    }else var status_code = 300;
+    }else{
+      var status_code = 300;
+      var no_chats = 0;
+    }
     return {chats: no_chats, message: message, status_code: status_code};
   }
 
