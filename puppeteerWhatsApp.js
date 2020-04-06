@@ -7,6 +7,7 @@ const httpProxy = require('http-proxy');
 const {getFreePorts, isFreePort} = require('node-port-check');
 const yaqrcode = require('yaqrcode');
 const fetch = require('node-fetch');
+const qrcode_terminal = require('qrcode-terminal');
 
 //DEFINE CONST WHATSAPP WEB
 const APP_HOST = '0.0.0.0';
@@ -114,7 +115,7 @@ class PuppeteerWhatsApp extends EventEmitter{
     //GOTO URL
     try{
       this.emit('CONSOLE', 'EVALUATING', true);
-      await page.goto(APP_URI, {waitUntil: 'networkidle2', timeout: 9000});
+      await page.goto(APP_URI, {waitUntil: 'networkidle2', timeout: 10000});
     }catch(e){
       if(APP_DEBUG){
         console.log('networkidle2');
@@ -123,6 +124,7 @@ class PuppeteerWhatsApp extends EventEmitter{
     }
 
     //VALID INJECT TOKEN SESSION
+    this.emit('CONSOLE', 'WAITING TOKEN', true);
     try{
       await page.waitForSelector(APP_QR_VALUE_SELECTOR, {timeout: 3300});
       const qr_code = await page.evaluate(`document.querySelector("` + APP_QR_VALUE_SELECTOR + `").getAttribute("data-ref")`);
@@ -131,9 +133,9 @@ class PuppeteerWhatsApp extends EventEmitter{
         this.emit('API', {action: 'error', value: 'No token whatsapp selector', data: null, status: false});
         this.page.close();
       }else{
-        this.emit('TOKEN', qr_code);
         var qr_base64 = yaqrcode(qr_code, {size: 300});
         this.emit('API', {action: 'token', value: 'Scan token', data: qr_base64, status: true});
+        qrcode_terminal.generate(qr_code, {small: true});
       }
     }catch(e){
       if(APP_DEBUG){
@@ -143,8 +145,7 @@ class PuppeteerWhatsApp extends EventEmitter{
     }
 
     //EVALUATE INJECTED TOKEN SESSION
-    this.emit('CONSOLE', 'WAITING TOKEN', true);
-    const is_token = await page.waitForSelector(APP_KEEP_PHONE_CONNECTED_SELECTOR, {timeout: 27000}).then(res => {
+    const is_token = await page.waitForSelector(APP_KEEP_PHONE_CONNECTED_SELECTOR, {timeout: 29000}).then(res => {
       this.emit('CONSOLE', 'VALID TOKEN', true);
       return true;
     }).catch(e => {
@@ -180,28 +181,58 @@ class PuppeteerWhatsApp extends EventEmitter{
         return false;
       });
 
-      await page.evaluate(WindowUtils);
-      await page.evaluate(() => window.Store.Conn.serialize())
-      .then(get_me => {
-        var time = (Date.now() - time_start)/1000;
-        this.emit('CONSOLE', 'WHATSAPP LOADED IN ' + time + ' SEC', true);
-      });
-
       //ENDPOINT
       const bw_endpoint = await browser.wsEndpoint();
       const ws_endpoint = await this.setWebSocket(bw_endpoint, token);
       this.emit('CONSOLE', 'ENDPOINT ' + ws_endpoint, true);
       db_token.get('token').find({name: token}).assign({endpoint: ws_endpoint}).write();
 
+      await page.evaluate(WindowUtils);
+      await page.evaluate((bw_endpoint, ws_endpoint) => {
+        window.App.BW = bw_endpoint;
+        window.App.WS = ws_endpoint;
+        return window.Store.Conn.serialize();
+      }, bw_endpoint, ws_endpoint)
+      .then(get_me => {
+        var time = (Date.now() - time_start)/1000;
+        this.emit('CONSOLE', 'WHATSAPP LOADED IN ' + time + ' SEC', true);
+      });
+
       //REGISTER EVENTS
       await page.exposeFunction('onAddMessage', message => this.emit('MESSAGE', message));
 
       await page.exposeFunction('onAddMedia', message => this.emit('MEDIA', message));
 
+      //STATE PAGE CHANGE
+      await page.exposeFunction('onChangeState', () => {
+        this.getStatePage(page).then(json => {
+          if(typeof json.state !== 'undefined'){
+            const stream = json.stream;
+            const state = json.state;
+            if(typeof json.ws !== 'undefined' && json.ws != ''){
+              const ws = json.ws;
+              if(stream == 'disconnected' && state == 'conflict'){
+                this.getWebSocketPage(ws).then(json_page => {
+                  if(json_page != null && typeof json_page === 'object' && typeof json_page.page !== 'undefined' && json_page.page != null){
+                    var browser = json_page.browser;
+                    browser.close();
+                    return false;
+                  }
+                })
+              }
+            }
+          }
+        });
+      });
+
       //ADD MESSAGES EVENT
       this.emit('CONSOLE', 'READING MESSAGES', true);
+
       await page.evaluate((token) => {
         setTimeout(() => {
+          //EMMITER EVENT APP STATE
+          window.Store.AppState.on('change', () => onChangeState());
+          //EMMITER EVENTS MESSAGES ADD
           window.Store.Msg.on('add', (new_message) => {
             if(typeof new_message.isNewMsg === 'undefined')return;
             var message = new_message.serialize();
@@ -290,11 +321,8 @@ class PuppeteerWhatsApp extends EventEmitter{
   isUrl(url){
     try{
       const data_url = new URL(url);
-      if(typeof data_url !== 'undefined' && typeof data_url.host !== 'undefined' &&  data_url.host != ''){
-        return true;
-      }else{
-        return false;
-      }
+      if(typeof data_url !== 'undefined' && typeof data_url.host !== 'undefined' &&  data_url.host != '')return true;
+      else return false;
     }catch(e){
       return false;
     }
@@ -308,6 +336,24 @@ class PuppeteerWhatsApp extends EventEmitter{
     var db = low(adapter);
     db.defaults({token: []}).write();
     return db;
+  }
+
+  getTimeSend(no){
+    var to_time = 3582;
+    if(typeof no === 'number' && no > 0){
+      var max = 3500;
+      var number_op = Math.ceil(no/max);
+      switch(number_op){
+        case 1: to_time = 4951; break;
+        case 2: to_time = 4478; break;
+        case 3: to_time = 3936; break;
+        case 4: to_time = 3582; break;
+        case 5: to_time = 3033; break;
+        case 6: to_time = 2791; break;
+        default: to_time = 3304; break;
+      }
+    }
+    return to_time;
   }
 
   async setWebSocket(ws_endpoint, token){
@@ -328,7 +374,6 @@ class PuppeteerWhatsApp extends EventEmitter{
       return {browser: null, page: null}
     }
   }
-
 
   //CHECKED - DEPEND App
   async sendMessageToID(page, id, message){
@@ -364,7 +409,7 @@ class PuppeteerWhatsApp extends EventEmitter{
 
   //CHECKED
   async getMe(page){
-    return await page.evaluate(() => {
+    return await page.evaluate((APP_DEBUG) => {
       try{
         var me = window.Store.Conn.serialize();
         var id = me.me._serialized;
@@ -373,54 +418,70 @@ class PuppeteerWhatsApp extends EventEmitter{
       }
       catch(e){if(APP_DEBUG)console.log(e)};
       return {};
-    })
+    }, APP_DEBUG)
   }
 
   //CHECKED
   async getContact(page, id){
-    return await page.evaluate((id) => {
+    return await page.evaluate((id, APP_DEBUG) => {
       try{
         if(typeof id === 'undefined' || id == '')return window.Store.Contact.serialize();
         else return window.Store.Contact.get(id).serialize();
       }catch(e){if(APP_DEBUG)console.log(e)};
       return {};
-    }, id)
+    }, id, APP_DEBUG)
   }
 
   //CHECKED
   async getProfilePicThumb(page, id){
-    return await page.evaluate((id) => {
+    return await page.evaluate((id, APP_DEBUG) => {
       try{
         if(typeof id === 'undefined' || id == '')return window.Store.ProfilePicThumb.serialize();
         else return window.Store.ProfilePicThumb.get(id).serialize();
       }catch(e){if(APP_DEBUG)console.log(e)};
       return {};
-    }, id)
+    }, id, APP_DEBUG)
   }
 
   //CHECKED
   async getChat(page, id){
-    return await page.evaluate((id) => {
+    return await page.evaluate((id, APP_DEBUG) => {
       try{
         if(typeof id === 'undefined' || id == '')return window.Store.Chat.serialize();
         else return window.Store.Chat.get(id).serialize();
       }catch(e){if(APP_DEBUG)console.log(e)};
       return {};
-    }, id)
+    }, id, APP_DEBUG)
+  }
+
+  async getChatStats(page){
+    return await page.evaluate((APP_DEBUG) => {
+      try{
+        var chats = window.Store.Chat.serialize();
+        var no_chats = chats.length;
+        var no_unread = 0;
+        chats.forEach((chat) => {
+          if(typeof chat.unreadCount !== 'undefined' && chat.unreadCount > 0)++no_unread;
+        });
+        return {chat: no_chats, unread: no_unread};
+      }catch(e){if(APP_DEBUG)console.log(e)};
+    }, APP_DEBUG)
   }
 
   async getChatUnread(page){
-    return await page.evaluate(() => {
+    return await page.evaluate((APP_DEBUG) => {
       try{
         var chats = window.Store.Chat.serialize();
         if(typeof chats === 'object' && chats.length > 0){
           var chats_unread = [];
           chats.forEach((chat) => {
-            if(typeof  chat.unreadCount !== 'undefined'){
+            if(typeof chat.unreadCount !== 'undefined' && typeof chat.msgs !== 'undefined'){
               var number = chat.id._serialized;
               var unread = chat.unreadCount;
+              var msg = chat.msgs;
               if(unread > 0){
-                chats_unread.push({number: number, unread: unread});
+                var msg_unread = msg.slice(- unread);
+                chats_unread.push({number: number, unread: unread, message: msg_unread});
               }
             }
           });
@@ -428,12 +489,12 @@ class PuppeteerWhatsApp extends EventEmitter{
         }
       }catch(e){if(APP_DEBUG)console.log(e)};
       return [];
-    })
+    }, APP_DEBUG)
   }
 
   //CHECKED
   async loadEarlierMsgstById(page, id){
-    return await page.evaluate((id) => {
+    return await page.evaluate((id, APP_DEBUG) => {
       if(id != ''){
         try{
           window.Store.Chat.get(id).loadEarlierMsgs();
@@ -441,12 +502,12 @@ class PuppeteerWhatsApp extends EventEmitter{
         }catch(e){if(APP_DEBUG)console.log(e)}
       }
       return false;
-    }, id)
+    }, id, APP_DEBUG)
   }
 
   //CHECKED
   async setContactSeen(page, id){
-    return await page.evaluate((id) => {
+    return await page.evaluate((id, APP_DEBUG) => {
       if(id != ''){
         try{
           window.App.sendSeen(id);
@@ -454,19 +515,19 @@ class PuppeteerWhatsApp extends EventEmitter{
         }catch(e){if(APP_DEBUG)console.log(e)};
       }
       return false;
-    }, id)
+    }, id, APP_DEBUG)
   }
 
   //CHECKED
   async setLogout(page){
-    return await page.evaluate(() => {
+    return await page.evaluate((APP_DEBUG) => {
       try{
         window.Store.tag.sendCurrentLogout();
         window.Store.tag.logout();
         return true;
       }catch(e){if(APP_DEBUG)console.log(e)};
       return false;
-    })
+    }, APP_DEBUG)
   }
 
   async sendMessage(page, id, message){
@@ -474,22 +535,12 @@ class PuppeteerWhatsApp extends EventEmitter{
       if(typeof id === 'string' && id != '')var id = [id];
       if(typeof id === 'object' && id.length > 0){
         var no_ids = id.length;
-        var max = 3500;
-        var number_op = Math.ceil(no_ids/max);
-        var to_time = 3582;
-        switch(number_op){
-          case 1: to_time = 4951; break;
-          case 2: to_time = 4478; break;
-          case 3: to_time = 3936; break;
-          case 4: to_time = 3582; break;
-          case 5: to_time = 3033; break;
-          case 6: to_time = 2791; break;
-          default: to_time = 3304; break;
-        }
+        var to_time = this.getTimeSend(no_ids);
         var time = 997;
         id.forEach((from) => {
           setTimeout(() => {
             new Promise((resolve, reject) => {
+              //console.log(from + " --> " + message);
               this.sendMessageToID(page, from, message);
             });
           }, time);
@@ -500,30 +551,99 @@ class PuppeteerWhatsApp extends EventEmitter{
     }catch(e){if(APP_DEBUG)console.log(e)}
   }
 
+  async sendBroadcast(page, message){
+    var to_broadcast = await page.evaluate((message, APP_DEBUG) => {
+      var to_broadcast = [];
+      try{
+        var chats = window.Store.Chat.serialize();
+        if(typeof chats === 'object' && chats.length > 0 && message != ''){
+          var no_chats = chats.length;
+          chats.forEach((chat) => {
+            if(typeof chat.msgs !== 'undefined' && typeof chat.id._serialized !== 'undefined'){
+              var number = chat.id._serialized;
+              to_broadcast.push(number);
+            }
+          });
+        }
+      }catch(e){if(APP_DEBUG)console.log(e)};
+      return to_broadcast;
+    }, message, APP_DEBUG);
+
+    var no_chats = to_broadcast.length;
+    if(no_chats > 0 && message != ''){
+      var status_code = 200;
+      var send_message = message + "\n\n#{number}";
+      this.sendMessage(page, to_broadcast, send_message);
+    }else var status_code = 300;
+    return {chats: no_chats, message: message, status_code: status_code};
+  }
+
+  async sendBroadcastUnread(page, message){
+    var to_broadcast = await page.evaluate((message, APP_DEBUG) => {
+      var to_broadcast = [];
+      try{
+        var chats = window.Store.Chat.serialize();
+        if(typeof chats === 'object' && chats.length > 0 && message != ''){
+          var no_chats = chats.length;
+          chats.forEach((chat) => {
+            if(typeof chat.msgs !== 'undefined' && typeof chat.id._serialized !== 'undefined' && typeof chat.unreadCount !== 'undefined' && typeof chat.msgs !== 'undefined' && chat.unreadCount > 0){
+              var number = chat.id._serialized;
+              to_broadcast.push(number);
+            }
+          });
+        }
+      }catch(e){if(APP_DEBUG)console.log(e)};
+      return to_broadcast;
+    }, message, APP_DEBUG);
+
+    var no_chats = to_broadcast.length;
+    if(no_chats > 0 && message != ''){
+      var status_code = 200;
+      var send_message = message + "\n\n#{number}";
+      this.sendMessage(page, to_broadcast, send_message);
+    }else var status_code = 300;
+    return {chats: no_chats, message: message, status_code: status_code};
+  }
+
   async setDestroy(browser, page, token){
     try{
-      var is_live = await page.evaluate((token) => {
+      var is_live = await page.evaluate((token, APP_DEBUG) => {
         var ls = JSON.parse(JSON.stringify(window.localStorage));
         if(typeof ls['last-wid'] === 'undefined'){
           console.log('DESTROY ' + token);
           return true;
         }else return false;
-      }, token);
+      }, token, APP_DEBUG);
       if(is_live){
         console.log('CLOSE PUPPETER');
         await browser.close();
       }
-    }catch(e){console.log(e)}
+    }catch(e){if(APP_DEBUG)console.log(e);}
   }
 
   //CHECKED
+  async getStatePage(page){
+    return await page.evaluate((APP_DEBUG) => {
+      var json = {};
+      try{
+        json = {
+          bw: window.App.BW,
+          ws: window.App.WS,
+          stream: (window.Store.AppState.__x_stream).toLowerCase(),
+          state: (window.Store.AppState.__x_state).toLowerCase()
+        };
+      }catch(e){if(APP_DEBUG)console.log(e)}
+      return json;
+    }, APP_DEBUG)
+  }
+
   async getNavigatorStorage(page){
-    return await page.evaluate(() => {
+    return await page.evaluate((APP_DEBUG) => {
       try{
         return navigator.storage.estimate();
       }catch(e){if(APP_DEBUG)console.log(e)}
       return {};
-    })
+    }, APP_DEBUG)
   }
 
   async startWebService(port, headless){
@@ -563,7 +683,7 @@ class PuppeteerWhatsApp extends EventEmitter{
           if(typeof req.body === 'object' && typeof req.body.token === 'string'  && typeof req.body.action === 'string'){
             var json = {}
             const token = (req.body.token).trim();
-            const action = (req.body.action).trim();
+            const action = (req.body.action).toLowerCase().trim();
 
             if(token == '')res.json({response: 'Not allowed empty token', status_code: 401});
             else if(action == '')res.json({response: 'Not allowed empty action', status_code: 402});
@@ -581,7 +701,11 @@ class PuppeteerWhatsApp extends EventEmitter{
 
                 WhatsApp.on('API', json => {
                   try{res.json(json)}
-                  catch(e){if(APP_DEBUG)console.log(e)}
+                  catch(e){
+                    if(APP_DEBUG){
+                      //console.log('Already sent api to client');
+                    }
+                  }
                 });
 
               }else{
@@ -599,13 +723,19 @@ class PuppeteerWhatsApp extends EventEmitter{
                       var page = json_page.page;
                       var browser = json_page.browser;
                       switch(action){
+                        case 'stats':
+                          WhatsApp.getChatStats(page).then(response => res.json(response));
+                        break;
+                        case 'state':
+                          WhatsApp.getStatePage(page).then(response => res.json(response));
+                        break;
                         case 'me':
                           WhatsApp.getMe(page).then(response => res.json(response));
                         break;
                         case 'contact':
                           WhatsApp.getContact(page, number).then(response => res.json(response));
                         break;
-                        case 'avatar':
+                        case 'photo':
                           WhatsApp.getProfilePicThumb(page, number).then(response => res.json(response));
                         break;
                         case 'chat':
@@ -620,12 +750,18 @@ class PuppeteerWhatsApp extends EventEmitter{
                         case 'message':
                           WhatsApp.sendMessage(page, number, message).then(response => res.json(response));
                         break;
+                        case 'broadcast':
+                          WhatsApp.sendBroadcast(page, message).then(response => res.json(response));
+                        break;
+                        case 'broadcast_unread':
+                          WhatsApp.sendBroadcastUnread(page, message).then(response => res.json(response));
+                        break;
                         case 'logout':
                           WhatsApp.setLogout(page).then(response => {
                             setTimeout(() => {
                               if(typeof browser !== null && typeof token !== 'undefined'){
                                 WhatsAppDB.get('token').find({name: token}).assign({localstorage: null, endpoint: null, bot_url: null, webhook_url: null}).write();
-                                WhatsApp.setDestroy(browser, page, token, port);
+                                WhatsApp.setDestroy(browser, page, token);
                               }
                             }, 1500);
                             res.json(response);
@@ -644,7 +780,7 @@ class PuppeteerWhatsApp extends EventEmitter{
                       }
                     }else{
                       WhatsAppDB.get('token').find({name: token}).assign({endpoint: null}).write();
-                      res.json({response: 'Invalid page', status_code: 405});
+                      res.json({response: 'Invalid page token', status_code: 405});
                       return false;
                     }
                   })
