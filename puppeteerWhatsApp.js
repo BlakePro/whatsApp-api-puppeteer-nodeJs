@@ -149,7 +149,7 @@ class PuppeteerWhatsApp extends EventEmitter{
       this.emit('CONSOLE', 'VALID TOKEN', true);
       return true;
     }).catch(e => {
-      db_token.get('token').find({name: token}).assign({localstorage: null, endpoint: null, bot_url: null, webhook_url: null}).write();
+      //db_token.get('token').find({name: token}).assign({localstorage: null, endpoint: null, bot_url: null, webhook_url: null}).write();
       this.emit('CONSOLE', 'INVALID TOKEN', false);
       this.emit('API', {action: 'error', value: 'Invalid token', data: null, status: false});
       this.browser.close();
@@ -570,7 +570,7 @@ class PuppeteerWhatsApp extends EventEmitter{
     }, message, APP_DEBUG);
 
     var no_chats = to_broadcast.length;
-    if(no_chats > 0 && message != ''){
+    if(no_chats > 0 && typeof message !== 'undefined' && message.trim() != ''){
       var status_code = 200;
       var send_message = message + "\n\n#{number}";
       this.sendMessage(page, to_broadcast, send_message);
@@ -597,7 +597,7 @@ class PuppeteerWhatsApp extends EventEmitter{
     }, message, APP_DEBUG);
 
     var no_chats = to_broadcast.length;
-    if(no_chats > 0 && message != ''){
+    if(no_chats > 0 && typeof message !== 'undefined' && message.trim() != ''){
       var status_code = 200;
       var send_message = message + "\n\n#{number}";
       this.sendMessage(page, to_broadcast, send_message);
