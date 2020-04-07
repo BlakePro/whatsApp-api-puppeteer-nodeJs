@@ -199,9 +199,14 @@ class PuppeteerWhatsApp extends EventEmitter{
       });
 
       //REGISTER EVENTS
-      await page.exposeFunction('onAddMessage', message => this.emit('MESSAGE', message));
+      //await page.exposeFunction('onAddMessage', message => this.emit('MESSAGE', message));
+      await page.exposeFunction('onAddMessage', (message) => {
+        //this.emit('MESSAGE', message)
+        this.responseBot(message, this);
+        //console.log(message);
+      });
 
-      await page.exposeFunction('onAddMedia', message => this.emit('MEDIA', message));
+      //await page.exposeFunction('onAddMedia', message => this.emit('MEDIA', message));
 
       //STATE PAGE CHANGE
       await page.exposeFunction('onChangeState', () => {
@@ -236,10 +241,11 @@ class PuppeteerWhatsApp extends EventEmitter{
           window.Store.Msg.on('add', (new_message) => {
             if(typeof new_message.isNewMsg === 'undefined')return;
             var message = new_message.serialize();
-            if(message.isNewMsg == false || message.id.fromMe == true || message.id.remote == 'status@broadcast')return;
+            if(message.isNewMsg == false || message.id.fromMe == true || message.id.remote == 'status@broadcast' || message.type != 'chat')return;
             message.apiToken = token;
-            if(message.type == 'chat')onAddMessage(message);
-            else onAddMedia(message);
+            //if(message.type == 'chat')
+            onAddMessage(message);
+            //else onAddMedia(message);
             return;
           });
         }, 4500);
