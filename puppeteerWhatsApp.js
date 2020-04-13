@@ -975,13 +975,13 @@ class PuppeteerWhatsApp extends EventEmitter{
           return false;
         }
       }
+    }catch(e){
+      if(APP_DEBUG){
+        console.log('function startWebService');
+        console.log(e);
+      }
+      res.json({response: 'Invalid Ws', status_code: 501});
     }
-  }catch(e){
-    if(APP_DEBUG){
-      console.log('function startWebService');
-      console.log(e);
-    }
-    res.json({response: 'Invalid Ws', status_code: 501});
   }
 }
 
