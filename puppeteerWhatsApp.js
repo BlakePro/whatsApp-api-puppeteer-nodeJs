@@ -50,14 +50,15 @@ class PuppeteerWhatsApp extends EventEmitter{
         headless: headless_chromium,
         ignoreHTTPSErrors: true,
         args: [
-          '--enable-sync', '--enable-background-networking', '--no-sandbox', '--disable-setuid-sandbox', '--no-experiments',
+          '--unlimited-storage', '--full-memory-crash-report', '--disable-dev-shm-usage', '--force-gpu-mem-available-mb',
+          '--enable-sync', '--enable-background-networking', '--no-sandbox', '--disable-setuid-sandbox',
           '--disable-gpu', '--renderer', '--no-service-autorun', '--no-experiments',
           '--no-default-browser-check', '--disable-webgl', '--disable-threaded-animation',
           '--disable-threaded-scrolling', '--disable-in-process-stack-traces', '--disable-histogram-customizer',
           '--disable-gl-extensions', '--disable-extensions', '--disable-composited-antialiasing',
           '--disable-canvas-aa', '--disable-3d-apis', '--disable-accelerated-2d-canvas',
           '--disable-accelerated-jpeg-decoding', '--disable-accelerated-mjpeg-decode', '--disable-app-list-dismiss-on-blur',
-          '--disable-accelerated-video-decode', '--num-raster-threads=1', '--mute-audio', '--disable-dev-shm-usage'
+          '--disable-accelerated-video-decode', '--mute-audio'
         ]
       });
       this.browser = browser;
@@ -86,7 +87,16 @@ class PuppeteerWhatsApp extends EventEmitter{
       });
 
       //PUPPETEER ERROR
-      await page.on('error', msg => console.log(msg));
+      await page.on('error', msg => {
+        console.log('function error');
+        console.log(msg);
+      });
+
+      //PUPPETEER PAGE ERROR
+      await page.on('pageerror', msg => {
+        console.log('function pageerror');
+        console.log(msg);
+      });
 
       //BLOCK RESOURCES TO LOAD FAST
       await page.on('request', request => {
