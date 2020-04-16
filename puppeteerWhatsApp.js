@@ -10,7 +10,9 @@ const fetch = require('node-fetch');
 const qrcode_terminal = require('qrcode-terminal');
 
 //DEFINE CONST WHATSAPP WEB
+const APP_HEADLESS = true;
 const APP_HOST = '0.0.0.0';
+const APP_PORT = 8333;
 const APP_URI = 'https://web.whatsapp.com';
 const APP_KEEP_PHONE_CONNECTED_SELECTOR = '[data-asset-intro-image="true"]';
 const APP_QR_VALUE_SELECTOR = '[data-ref]';
@@ -28,14 +30,11 @@ class PuppeteerWhatsApp extends EventEmitter{
   }
 
   //CHECKED
-  async start(token, headless, bot_url, webhook_url){
+  async start(token, bot_url, webhook_url){
     try{
       const time_start = Date.now();
 
       if(typeof token === 'undefined' || token == '')token = 'new';
-
-      if(typeof headless === 'boolean')var headless_chromium = headless;
-      else var headless_chromium = true;
 
       if(typeof bot_url === 'string' && (bot_url).trim() != '' && this.isUrl(bot_url))var bot_url = (bot_url).trim();
       else var bot_url = null;
@@ -47,10 +46,13 @@ class PuppeteerWhatsApp extends EventEmitter{
 
       //NEW PUPPETEER
       const browser = await puppeteer.launch({
-        headless: headless_chromium,
+        headless: APP_HEADLESS,
         ignoreHTTPSErrors: true,
         args: [
-          '--unlimited-storage', '--full-memory-crash-report', '--disable-dev-shm-usage', '--force-gpu-mem-available-mb',
+          //'--auto-open-devtools-for-tabs',
+          //'--full-memory-crash-report'
+          '--unlimited-storage', '--force-gpu-mem-available-mb',
+          '--disable-dev-shm-usage',
           '--enable-sync', '--enable-background-networking', '--no-sandbox', '--disable-setuid-sandbox',
           '--disable-gpu', '--renderer', '--no-service-autorun', '--no-experiments',
           '--no-default-browser-check', '--disable-webgl', '--disable-threaded-animation',
@@ -63,12 +65,15 @@ class PuppeteerWhatsApp extends EventEmitter{
       });
       this.browser = browser;
 
-      //CREATE PUPPETEER
+      //CREATE PUPPETEER INCOGNITO
       const context = await browser.createIncognitoBrowserContext();
       const page = await context.newPage();
-      const pages_created = await browser.pages();
+
+      //CREATE PUPPETEER NORMAL
+      //const page = await browser.newPage();
 
       //CLOSE BLANK PAGE
+      const pages_created = await browser.pages();
       pages_created[0].close();
       this.page = pages_created[1];
 
@@ -87,15 +92,46 @@ class PuppeteerWhatsApp extends EventEmitter{
       });
 
       //PUPPETEER ERROR
-      await page.on('error', msg => {
+      await page.on('error', error => {
         console.log('function error');
-        console.log(msg);
+        var str_error = error.toString();
+        if(typeof str_error === 'string'){
+          const type_error = str_error.substring(0, 19).trim();
+          console.log("ERROR TYPE: " + type_error);
+          if(type_error == 'Error: Page crashed'){
+            page.reload();
+          }else{
+            console.log(error);
+          }
+        }
+      });
+
+      await page.on('load', () => {
+        console.log('ONLOAD');
+        page.evaluate(res => JSON.stringify(window.sessionStorage)).then(sessionStorage => {
+          const session = JSON.parse(sessionStorage);
+          if(typeof session.TK !== 'undefined' && session.TK != '' && session.TK != null){
+            const token_name = session.TK;
+            var data_token = db_token.get('token').find({name: token_name}).value();
+            if(typeof data_token !== 'undefined' && typeof data_token.localstorage !== 'undefined' &&  data_token.localstorage != null){
+              console.log('RELOAD TOKEN');
+              var send = {
+                method: 'post',
+                body: JSON.stringify({action: 'start', token: token_name, bot_url: data_token.bot_url, webhook_url: data_token.webhook_url}),
+                headers: {'Content-Type': 'application/json'}
+              };
+              var uri = 'http://localhost:' + APP_PORT + '/api';
+              fetch(uri, send);
+              page.close();
+            }
+          }else console.log('TOKEN INITAL');
+        });
       });
 
       //PUPPETEER PAGE ERROR
-      await page.on('pageerror', msg => {
+      await page.on('pageerror', error => {
         console.log('function pageerror');
-        console.log(msg);
+        console.log(error);
       });
 
       //BLOCK RESOURCES TO LOAD FAST
@@ -114,7 +150,7 @@ class PuppeteerWhatsApp extends EventEmitter{
         //INJECT TOKEN SESSION IN WHATSAPP WEB
         if(data_token != ''){
           console.log('VALIDATING TOKEN');
-          const session = await JSON.parse(data_token);
+          const session = JSON.parse(data_token);
           await page.evaluateOnNewDocument(session => {
             localStorage.clear();
             localStorage.setItem("WABrowserId", session.WABrowserId);
@@ -200,11 +236,15 @@ class PuppeteerWhatsApp extends EventEmitter{
         db_token.get('token').find({name: token}).assign({endpoint: ws_endpoint}).write();
 
         await page.evaluate(WindowUtils);
-        await page.evaluate((bw_endpoint, ws_endpoint) => {
+        await page.evaluate((bw_endpoint, ws_endpoint, token) => {
           window.App.BW = bw_endpoint;
           window.App.WS = ws_endpoint;
+          window.App.TK = token;
+          sessionStorage.setItem("BW", bw_endpoint);
+          sessionStorage.setItem("WS", ws_endpoint);
+          sessionStorage.setItem("TK", token);
           return window.Store.Conn.serialize();
-        }, bw_endpoint, ws_endpoint)
+        }, bw_endpoint, ws_endpoint, token)
         .then(get_me => {
           var time = (Date.now() - time_start)/1000;
           console.log('WHATSAPP LOADED IN ' + time + ' SEC');
@@ -266,7 +306,7 @@ class PuppeteerWhatsApp extends EventEmitter{
         setTimeout(() => {
           this.getMe(page).then(me => {
             var end_time =  (Date.now() - time_start)/1000;
-            var value = 'WhatsApp ready in ' + end_time + ' sec.';
+            var value = 'WHATSAPP READY IN ' + end_time + ' SEC.';
             console.log(value);
             this.emit('API', {action: 'ready', value: value, data: me, status: true});
           });
@@ -277,7 +317,7 @@ class PuppeteerWhatsApp extends EventEmitter{
       }
     }catch(e){
       if(APP_DEBUG){
-        console.log('async start');
+        console.log('function start');
         console.log(e);
       }
     }
@@ -434,20 +474,20 @@ class PuppeteerWhatsApp extends EventEmitter{
     try{
       const browser = await puppeteer.connect({browserWSEndpoint: ws_url, ignoreHTTPSErrors: true});
       const pages_created = await browser.pages();
-      return {browser: browser, page: pages_created[0]}
+      return {browser: browser, page: pages_created[0], endpoint: ws_url, type: 'success'}
     }catch(e){
       if(APP_DEBUG){
         console.log('function getWebSocketPage');
         console.log(e);
       }
-      return {browser: null, page: null}
+      return {browser: null, page: null, endpoint: e.target.url, type: e.type}
     }
   }
 
   //CHECKED
   async sendMessageToID(page, id, message){
     try{
-      return await page.evaluate((id, message, APP_DEBUG) => {
+      return await page.evaluate((message, id, APP_DEBUG) => {
         try{
           if(typeof id === 'string'){
             const number = id.replace(/\D+/g, '');
@@ -474,7 +514,7 @@ class PuppeteerWhatsApp extends EventEmitter{
           }else return {number: null, message: 'NaN', status_code: 404};
         }catch(e){if(APP_DEBUG)console.log(e)}
         return {};
-      }, id, message, APP_DEBUG)
+      }, message, id, APP_DEBUG)
     }catch(e){
       if(APP_DEBUG){
         console.log('function sendMessageToID');
@@ -801,6 +841,7 @@ class PuppeteerWhatsApp extends EventEmitter{
           json = {
             bw: window.App.BW,
             ws: window.App.WS,
+            tk : window.App.TK,
             stream: (window.Store.AppState.__x_stream).toLowerCase(),
             state: (window.Store.AppState.__x_state).toLowerCase()
           };
@@ -832,10 +873,10 @@ class PuppeteerWhatsApp extends EventEmitter{
   }
 
   //CHECKED
-  async startWebService(port, headless){
+  async startWebService(){
     try{
-      if(typeof port === 'number'){
-        const is_open = await isFreePort(port, APP_HOST).then(open => open[2]);
+      if(typeof APP_PORT === 'number'){
+        const is_open = await isFreePort(APP_PORT, APP_HOST).then(open => open[2]);
         if(is_open){
           const express = require('express');
           const bodyParser = require('body-parser');
@@ -849,7 +890,7 @@ class PuppeteerWhatsApp extends EventEmitter{
           ws.use(bodyParser.urlencoded({extended: true}));
           ws.use(helmet());
 
-          server.listen(port, () => {
+          server.listen(APP_PORT, () => {
             var data_address = server.address();
             console.log('START WEB SERVICE ON ' + data_address.address + data_address.port);
             return ws;
@@ -884,7 +925,7 @@ class PuppeteerWhatsApp extends EventEmitter{
                   if(typeof req.body.webhook_url === 'string' && (req.body.webhook_url).trim() != '' && WhatsApp.isUrl(req.body.webhook_url))var webhook_url = (req.body.webhook_url).trim();
                   else var webhook_url = '';
 
-                  WhatsApp.start(token, headless, bot_url, webhook_url);
+                  WhatsApp.start(token, bot_url, webhook_url);
 
                   WhatsApp.on('API', json => {
                     try{res.json(json)}
@@ -981,7 +1022,7 @@ class PuppeteerWhatsApp extends EventEmitter{
             return false;
           });
         }else{
-          console.log('ALREADY LISTEN ' + APP_HOST + ':' + port);
+          console.log('ALREADY LISTEN ' + APP_HOST + ':' + APP_PORT);
           return false;
         }
       }
