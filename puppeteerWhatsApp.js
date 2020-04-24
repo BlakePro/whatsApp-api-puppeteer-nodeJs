@@ -715,7 +715,15 @@ class PuppeteerWhatsApp extends EventEmitter{
           setTimeout(() => {
             new Promise((resolve, reject) => {
               //console.log(from + " --> " + message);
-              this.sendMessageToID(page, from, message);
+              var arr_from = from.split('@');
+              if(typeof arr_from[1] !== 'undefined'){
+                var type_us = arr_from[1];
+                if(type_us == 'c.us'){
+                  this.sendMessageToID(page, from, message);
+                }else{
+                  console.log(arr_from);
+                }
+              }
             });
           }, time);
           time += to_time;
