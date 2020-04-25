@@ -30,6 +30,7 @@ exports.WindowStore = (moduleRaidStr) => {
   window.Store.tag = window.mR.findModule('tag')[0].default;
   window.Store.MediaTypes = window.mR.findModule('msgToMediaType')[0];
   window.Store.UserConstructor = window.mR.findModule((module) => (module.default && module.default.prototype && module.default.prototype.isServer && module.default.prototype.isUser) ? module.default : null)[0].default;
+  window.Store.Validators = window.mR.findModule('findLinks')[0];
 };
 
 exports.WindowUtils = () => {
@@ -50,62 +51,74 @@ exports.WindowUtils = () => {
     return false;
   };
 
+
   window.App.sendMessage = async (chat, content, options = {}) => {
-    let attOptions = {};
-    if(options.attachment){
-      attOptions = await window.App.processMediaData(options.attachment);
-      delete options.attachment;
-    }
-
-    let quotedMsgOptions = {};
-    if(options.quotedMessageId){
-      let quotedMessage = window.Store.Msg.get(options.quotedMessageId);
-      if(quotedMessage.canReply()){
-        quotedMsgOptions = quotedMessage.msgContextInfo(chat);
+      let attOptions = {};
+      if (options.attachment) {
+          attOptions = await window.App.processMediaData(options.attachment, options.sendAudioAsVoice);
+          delete options.attachment;
       }
-      delete options.quotedMessageId;
-    }
 
-    if(options.mentionedJidList){
-      options.mentionedJidList = options.mentionedJidList.map(cId => window.Store.Contact.get(cId).id);
-    }
+      let quotedMsgOptions = {};
+      if (options.quotedMessageId) {
+          let quotedMessage = window.Store.Msg.get(options.quotedMessageId);
+          if (quotedMessage.canReply()) {
+              quotedMsgOptions = quotedMessage.msgContextInfo(chat);
+          }
+          delete options.quotedMessageId;
+      }
 
-    let locationOptions = {};
-    if(options.location){
-      locationOptions = {
-          type: 'location',
-          loc: options.location.description,
-          lat: options.location.latitude,
-          lng: options.location.longitude
+      if (options.mentionedJidList) {
+          options.mentionedJidList = options.mentionedJidList.map(cId => window.Store.Contact.get(cId).id);
+      }
+
+      let locationOptions = {};
+      if (options.location) {
+          locationOptions = {
+              type: 'location',
+              loc: options.location.description,
+              lat: options.location.latitude,
+              lng: options.location.longitude
+          };
+          delete options.location;
+      }
+
+      if (options.preview) {
+          delete options.preview;
+          const link = window.Store.Validators.findLink(content);
+          if (link) {
+              const preview = await window.Store.Wap.queryLinkPreview(link.url);
+              preview.preview = true;
+              preview.subtype = 'url';
+              options = { ...options, ...preview };
+          }
+      }
+
+      const newMsgId = new window.Store.MsgKey({
+          from: window.Store.Conn.me,
+          to: chat.id,
+          id: window.Store.genId(),
+      });
+
+      const message = {
+          ...options,
+          id: newMsgId,
+          ack: 0,
+          body: content,
+          from: window.Store.Conn.me,
+          to: chat.id,
+          local: true,
+          self: 'out',
+          t: parseInt(new Date().getTime() / 1000),
+          isNewMsg: true,
+          type: 'chat',
+          ...locationOptions,
+          ...attOptions,
+          ...quotedMsgOptions
       };
-      delete options.location;
-    }
 
-    const newMsgId = new window.Store.MsgKey({
-      from: window.Store.Conn.me,
-      to: chat.id,
-      id: window.Store.genId(),
-    });
-
-    const message = {
-      ...options,
-      id: newMsgId,
-      ack: 0,
-      body: content,
-      from: window.Store.Conn.me,
-      to: chat.id,
-      local: true,
-      self: 'out',
-      t: parseInt(new Date().getTime() / 1000),
-      isNewMsg: true,
-      type: 'chat',
-      ...locationOptions,
-      ...attOptions,
-      ...quotedMsgOptions
-    };
-
-    await window.Store.SendMessage.addAndSendMsgToChat(chat, message);
-    return window.Store.Msg.get(newMsgId._serialized);
+      await window.Store.SendMessage.addAndSendMsgToChat(chat, message);
+      return window.Store.Msg.get(newMsgId._serialized);
   };
 
   window.App.processMediaData = async (mediaInfo) => {
@@ -116,33 +129,37 @@ exports.WindowUtils = () => {
     const mediaObject = window.Store.MediaObject.getOrCreateMediaObject(mediaData.filehash);
 
     const mediaType = window.Store.MediaTypes.msgToMediaType({
-      type: mediaData.type,
-      isGif: mediaData.isGif
+       type: mediaData.type,
+       isGif: mediaData.isGif
     });
 
-    if(!(mediaData.mediaBlob instanceof window.Store.OpaqueData.default)){
-      mediaData.mediaBlob = await window.Store.OpaqueData.default.createFromData(mediaData.mediaBlob, mediaData.mediaBlob.type);
+    if(forceVoice && mediaData.type === 'audio') {
+       mediaData.type = 'ptt';
+    }
+
+    if (!(mediaData.mediaBlob instanceof window.Store.OpaqueData.default)) {
+       mediaData.mediaBlob = await window.Store.OpaqueData.default.createFromData(mediaData.mediaBlob, mediaData.mediaBlob.type);
     }
 
     mediaData.renderableUrl = mediaData.mediaBlob.url();
     mediaObject.consolidate(mediaData.toJSON());
     mediaData.mediaBlob.autorelease();
 
-    const uploadedMedia = await window.Store.MediaUpload.uploadMedia(mediaData.mimetype, mediaObject, mediaType);
-    if(!uploadedMedia){
-      throw new Error('upload failed: media entry was not created');
+    const uploadedMedia = await window.Store.MediaUpload.uploadMedia({ mimetype: mediaData.mimetype, mediaObject, mediaType });
+    if (!uploadedMedia) {
+       throw new Error('upload failed: media entry was not created');
     }
 
     mediaData.set({
-      clientUrl: uploadedMedia.mmsUrl,
-      directPath: uploadedMedia.directPath,
-      mediaKey: uploadedMedia.mediaKey,
-      mediaKeyTimestamp: uploadedMedia.mediaKeyTimestamp,
-      filehash: mediaObject.filehash,
-      uploadhash: uploadedMedia.uploadHash,
-      size: mediaObject.size,
-      streamingSidecar: uploadedMedia.sidecar,
-      firstFrameSidecar: uploadedMedia.firstFrameSidecar
+       clientUrl: uploadedMedia.mmsUrl,
+       directPath: uploadedMedia.directPath,
+       mediaKey: uploadedMedia.mediaKey,
+       mediaKeyTimestamp: uploadedMedia.mediaKeyTimestamp,
+       filehash: mediaObject.filehash,
+       uploadhash: uploadedMedia.uploadHash,
+       size: mediaObject.size,
+       streamingSidecar: uploadedMedia.sidecar,
+       firstFrameSidecar: uploadedMedia.firstFrameSidecar
     });
 
     return mediaData;

@@ -48,10 +48,11 @@ class PuppeteerWhatsApp extends EventEmitter{
       const browser = await puppeteer.launch({
         headless: APP_HEADLESS,
         ignoreHTTPSErrors: true,
+        defaultViewport: null,
         args: [
           //'--auto-open-devtools-for-tabs',
           //'--full-memory-crash-report'
-          '--unlimited-storage', '--force-gpu-mem-available-mb',
+          //'--unlimited-storage', '--force-gpu-mem-available-mb',
           '--disable-dev-shm-usage',
           '--enable-sync', '--enable-background-networking', '--no-sandbox', '--disable-setuid-sandbox',
           '--disable-gpu', '--renderer', '--no-service-autorun', '--no-experiments',
@@ -175,7 +176,7 @@ class PuppeteerWhatsApp extends EventEmitter{
       //VALID INJECT TOKEN SESSION
       console.log('WAITING TOKEN');
       try{
-        await page.waitForSelector(APP_QR_VALUE_SELECTOR, {timeout: 3300});
+        await page.waitForSelector(APP_QR_VALUE_SELECTOR, {timeout: 2300});
         const qr_code = await page.evaluate(`document.querySelector("` + APP_QR_VALUE_SELECTOR + `").getAttribute("data-ref")`);
         if(typeof qr_code === 'undefined' || qr_code === null){
           console.log('NO TOKEN SELECTOR EXISTS');
@@ -251,35 +252,36 @@ class PuppeteerWhatsApp extends EventEmitter{
         });
 
         //REGISTER EVENTS
-        //await page.exposeFunction('onAddMessage', message => this.emit('MESSAGE', message));
         await page.exposeFunction('onAddMessage', (message) => {
-          //this.emit('MESSAGE', message)
           this.responseBot(message, this);
-          //console.log(message);
         });
 
         //await page.exposeFunction('onAddMedia', message => this.emit('MEDIA', message));
 
         //STATE PAGE CHANGE
         await page.exposeFunction('onChangeState', () => {
-          this.getStatePage(page).then(json => {
-            if(typeof json.state !== 'undefined'){
-              const stream = json.stream;
-              const state = json.state;
-              if(typeof json.ws !== 'undefined' && json.ws != ''){
-                const ws = json.ws;
-                if(stream == 'disconnected' && state == 'conflict'){
-                  this.getWebSocketPage(ws).then(json_page => {
-                    if(json_page != null && typeof json_page === 'object' && typeof json_page.page !== 'undefined' && json_page.page != null){
-                      var browser = json_page.browser;
-                      browser.close();
-                      return false;
-                    }
-                  })
+          try{
+            this.getStatePage(page).then(json => {
+              if(typeof json.state !== 'undefined'){
+                const stream = json.stream;
+                const state = json.state;
+                if(typeof json.ws !== 'undefined' && json.ws != ''){
+                  const ws = json.ws;
+                  if(stream == 'disconnected' && state == 'conflict'){
+                    this.getWebSocketPage(ws).then(json_page => {
+                      if(json_page != null && typeof json_page === 'object' && typeof json_page.page !== 'undefined' && json_page.page != null){
+                        var browser = json_page.browser;
+                        browser.close();
+                        return false;
+                      }
+                    })
+                  }
                 }
               }
-            }
-          });
+            });
+          }catch(e){
+            console.log('function exposeFunction(onChangeState)');
+          }
         });
 
         //ADD MESSAGES EVENT
@@ -292,7 +294,8 @@ class PuppeteerWhatsApp extends EventEmitter{
             //EMMITER EVENTS MESSAGES ADD
             window.Store.Msg.on('add', (new_message) => {
               if(typeof new_message.isNewMsg === 'undefined')return;
-              var message = new_message.serialize();
+              const message = new_message.serialize();
+              //console.log(message);
               if(message.isNewMsg == false || message.id.fromMe == true || message.id.remote == 'status@broadcast' || message.type != 'chat')return;
               message.apiToken = token;
               //if(message.type == 'chat')
@@ -359,7 +362,13 @@ class PuppeteerWhatsApp extends EventEmitter{
                       fetch(bot_url, send).then(res => res.json()).then(parsed => {
                         if(typeof parsed === 'object' && parsed.status == true && typeof parsed.message !== 'undefined'){
                           var bot_message = parsed.message;
-                          WhatsApp.sendMessage(page, from, bot_message);
+                          var options = {};
+                          if(typeof parsed.options !== 'undefined'){
+                            try{
+                              var options = JSON.parse(parsed.options);
+                            }catch(e){}
+                          }
+                          WhatsApp.sendMessage(page, from, bot_message, options);
                         }
                       })
                     }
@@ -485,9 +494,9 @@ class PuppeteerWhatsApp extends EventEmitter{
   }
 
   //CHECKED
-  async sendMessageToID(page, id, message){
+  async sendMessageToID(page, id, message, options = {}){
     try{
-      return await page.evaluate((message, id, APP_DEBUG) => {
+      return await page.evaluate((message, id, options) => {
         try{
           if(typeof id === 'string'){
             const number = id.replace(/\D+/g, '');
@@ -495,26 +504,26 @@ class PuppeteerWhatsApp extends EventEmitter{
               window.App.sendSeen(id);
               const get_id = window.Store.Chat.get(id);
               var replaceNumber = (message, number) => message.replace(/{number}/g, number);
-
               if(typeof message === 'string' && message != ''){
                 var message = replaceNumber(message, number);
-                window.App.sendMessage(get_id, message);
+                window.App.sendMessage(get_id, message, options);
                 return {number: number, message: message, status_code: 200};
 
               }else if(Array.isArray(message) && message.length > 0){
                 message.forEach((data_message) => {
                   if(typeof data_message === 'string' && data_message != ''){
                     var message = replaceNumber(data_message, number);
-                    window.App.sendMessage(get_id, data_message);
+                    window.App.sendMessage(get_id, data_message, options);
                     return {number: number, message: data_message, status_code: 200};
                   }
                 });
               }
             }else return {number: null, message: 'NaN', status_code: 404};
           }else return {number: null, message: 'NaN', status_code: 404};
-        }catch(e){if(APP_DEBUG)console.log(e)}
-        return {};
-      }, message, id, APP_DEBUG)
+        }catch(e){
+          return {number: null, message: 'Error', status_code: 504}
+        }
+      }, message, id, options)
     }catch(e){
       if(APP_DEBUG){
         console.log('function sendMessageToID');
@@ -704,7 +713,7 @@ class PuppeteerWhatsApp extends EventEmitter{
   }
 
   //CHECKED
-  async sendMessage(page, id, message){
+  async sendMessage(page, id, message, options = {}){
     try{
       if(typeof id === 'string' && id != '')var id = [id];
       if(typeof id === 'object' && id.length > 0){
@@ -718,11 +727,8 @@ class PuppeteerWhatsApp extends EventEmitter{
               var arr_from = from.split('@');
               if(typeof arr_from[1] !== 'undefined'){
                 var type_us = arr_from[1];
-                if(type_us == 'c.us'){
-                  this.sendMessageToID(page, from, message);
-                }else{
-                  console.log(arr_from);
-                }
+                if(type_us == 'c.us')this.sendMessageToID(page, from, message, options);
+                else console.log(arr_from);
               }
             });
           }, time);
@@ -859,7 +865,7 @@ class PuppeteerWhatsApp extends EventEmitter{
     }catch(e){
       if(APP_DEBUG){
         console.log('function getStatePage');
-        console.log(e);
+        //console.log(e);
       }
       return {};
     }
@@ -894,8 +900,8 @@ class PuppeteerWhatsApp extends EventEmitter{
           const ws = express();
           const server = http.createServer(ws);
           ws.use(cors());
-          ws.use(bodyParser.json());
-          ws.use(bodyParser.urlencoded({extended: true}));
+          ws.use(bodyParser.json({limit: '10mb', extended: true}));
+          ws.use(bodyParser.urlencoded({limit: '10mb', extended: true}));
           ws.use(helmet());
 
           server.listen(APP_PORT, () => {
@@ -906,12 +912,12 @@ class PuppeteerWhatsApp extends EventEmitter{
 
           ws.all('*', (req, res, next) => {
             if(typeof req.url !== 'undefined' && req.url === '/api') return next();
-            res.json({response: 'Hello WhatsApp', status_code: 201});
+            res.json({response: 'Hello', status_code: 201});
             return false;
           });
 
           ws.get('/api', (req, res) => {
-            res.json({response: 'WhatsApp Api', status_code: 202});
+            res.json({response: 'Api', status_code: 202});
             return false;
           });
 
@@ -950,9 +956,15 @@ class PuppeteerWhatsApp extends EventEmitter{
                   if(typeof data_token === 'undefined' || typeof data_token.endpoint === 'undefined' || data_token.endpoint == null || data_token.endpoint == ''){
                     res.json({response: 'Not defined login', status_code: 403});
                   }else{
-
+                    //console.log(req.body);
                     const number = req.body.number;
                     const message = req.body.message;
+                    var options = {};
+                    if(typeof req.body.options !== 'undefined'){
+                      try{
+                        var options = JSON.parse(req.body.options);
+                      }catch(e){}
+                    }
 
                     WhatsApp.getWebSocketPage(data_token.endpoint).then(json_page => {
                       if(json_page != null && typeof json_page === 'object' && typeof json_page.page !== 'undefined' && json_page.page != null){
@@ -984,7 +996,7 @@ class PuppeteerWhatsApp extends EventEmitter{
                             WhatsApp.setContactSeen(page, number).then(response => res.json(response));
                           break;
                           case 'message':
-                            WhatsApp.sendMessage(page, number, message).then(response => res.json(response));
+                            WhatsApp.sendMessage(page, number, message, options).then(response => res.json(response));
                           break;
                           case 'broadcast':
                             WhatsApp.sendBroadcast(page, message).then(response => res.json(response));
