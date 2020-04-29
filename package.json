@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "WhatsAppWeb API via Puppeteer",
   "main": "indexWhatsApp.js",
+  "private": "true",
   "scripts": {
     "start": "nohup node indexWhatsApp.js &",
     "test": "node indexWhatsApp.js"

@@ -76,7 +76,7 @@ exports.WindowUtils = () => {
       if (options.location) {
           locationOptions = {
               type: 'location',
-              loc: options.location.description,
+              loc: options.location.name,
               lat: options.location.latitude,
               lng: options.location.longitude
           };
