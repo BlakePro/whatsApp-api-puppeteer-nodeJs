@@ -249,7 +249,9 @@ class PuppeteerWhatsApp extends EventEmitter {
           })
 
         // REGISTER EVENTS
-        await page.exposeFunction('onAddMessage', (message) => this.responseBot(message, this))
+        await page.exposeFunction('onAddMessage', (message) => {
+          this.responseBot(message, this);
+        })
 
         // await page.exposeFunction('onAddMedia', message => this.emit('MEDIA', message));
 
@@ -301,7 +303,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         }, token)
 
         var end_time = (Date.now() - time_start) / 1000
-        var value = 'WHATSAPP READY IN ' + end_time + ' SEC.'
+        var value = 'READY ' + token + ' IN ' + end_time + ' SEC.'
         console.log(value)
         this.emit('API', { action: 'ready', value: value, status: true })
       } else await browser.close()
@@ -318,22 +320,22 @@ class PuppeteerWhatsApp extends EventEmitter {
     try {
       new Promise((resolve, reject) => {
         var time = new Date()
+        //console.log(message);
         if (typeof message === 'object' && typeof message.apiToken !== 'undefined' && typeof message.from !== 'undefined') {
-          // console.log(message);
-
           const token = message.apiToken
           const WhatsAppDB = WhatsApp.getDatabaseToken()
           const data_token = WhatsAppDB.get('token').find({ name: token }).value()
-
           if (typeof data_token === 'undefined' || typeof data_token.endpoint === 'undefined') {
             console.log({ response: 'Not defined token', status: false })
             return false
           } else {
             // BOT MESSAGE
             new Promise((resolve, reject) => {
+              //console.log(data_token);
               if (typeof data_token.bot_url !== 'undefined' && data_token.bot_url != null) {
+                //console.log(data_token);
                 WhatsApp.getWebSocketPage(data_token.endpoint).then(json_page => {
-                  if (typeof json_page === 'object' && typeof json_page.page !== 'undefined' && page != null) {
+                  if (typeof json_page === 'object' && typeof json_page.page !== 'undefined' && json_page.page != null) {
                     var page = json_page.page
                     var bot_url = data_token.bot_url
                     var from = message.from
@@ -342,8 +344,9 @@ class PuppeteerWhatsApp extends EventEmitter {
                       body: JSON.stringify({ token: token, message: message.body, data: JSON.stringify(message) }),
                       headers: { 'Content-Type': 'application/json' }
                     }
-
+                    //console.log(send);
                     fetch(bot_url, send).then(res => res.json()).then(parsed => {
+                      //console.log(parsed);
                       if (typeof parsed === 'object' && parsed.status == true && typeof parsed.message !== 'undefined') {
                         var bot_message = parsed.message
                         var options = {}
@@ -907,8 +910,10 @@ class PuppeteerWhatsApp extends EventEmitter {
               else {
                 const WhatsApp = this
                 if (action == 'start') {
+                  console.log(req.body);
                   if (typeof req.body.bot_url === 'string' && (req.body.bot_url).trim() != '' && WhatsApp.isUrl(req.body.bot_url)) var bot_url = (req.body.bot_url).trim()
                   else var bot_url = ''
+                    console.log(bot_url);
 
                   if (typeof req.body.webhook_url === 'string' && (req.body.webhook_url).trim() != '' && WhatsApp.isUrl(req.body.webhook_url)) var webhook_url = (req.body.webhook_url).trim()
                   else var webhook_url = ''
