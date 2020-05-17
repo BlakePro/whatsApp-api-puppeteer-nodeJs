@@ -996,7 +996,7 @@ class PuppeteerWhatsApp extends EventEmitter {
             return false
           })
         } else {
-          console.log('ALREADY LISTEN ' + APP_HOST + ':' + APP_PORT)
+          console.log('ALREADY LISTEN ON ' + APP_SERVER)
           return false
         }
       }
