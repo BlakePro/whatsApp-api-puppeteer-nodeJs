@@ -17,6 +17,7 @@
     "helmet": "^3.22.0",
     "http-proxy": "^1.18.0",
     "lowdb": "^1.0.0",
+    "moment": "^2.26.0",
     "node-fetch": "^2.6.0",
     "node-port-check": "^2.0.1",
     "puppeteer": "^2.1.1",

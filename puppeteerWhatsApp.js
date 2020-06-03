@@ -8,6 +8,7 @@ const { getFreePorts, isFreePort } = require('node-port-check')
 const yaqrcode = require('yaqrcode')
 const fetch = require('node-fetch')
 const qrcode_terminal = require('qrcode-terminal')
+const moment = require('moment');
 
 // DEFINE CONST WHATSAPP WEB
 const APP_HEADLESS = true
@@ -30,6 +31,15 @@ class PuppeteerWhatsApp extends EventEmitter {
   }
 
   // CHECKED
+  getLog (name, e) {
+    if (APP_DEBUG) {
+      console.log('function ' +  name)
+      console.log(moment().format('YYYY-MM-DD HH:mm:ss'));
+      console.log(e)
+    }
+  }
+
+  // CHECKED
   async start (token, bot, webhook) {
     try {
       const time_start = Date.now()
@@ -44,25 +54,33 @@ class PuppeteerWhatsApp extends EventEmitter {
 
       const db_token = this.getDatabaseToken()
 
+      const puppeteer_args = [
+        // '--full-memory-crash-report'
+        '--disable-dev-shm-usage',
+        '--enable-sync', '--enable-background-networking', '--no-sandbox', '--disable-setuid-sandbox',
+        '--disable-gpu', '--renderer', '--no-service-autorun', '--no-experiments',
+        '--no-default-browser-check', '--disable-webgl', '--disable-threaded-animation',
+        '--disable-threaded-scrolling', '--disable-in-process-stack-traces', '--disable-histogram-customizer',
+        '--disable-gl-extensions', '--disable-extensions', '--disable-composited-antialiasing',
+        '--disable-canvas-aa', '--disable-3d-apis', '--disable-accelerated-2d-canvas',
+        '--disable-accelerated-jpeg-decoding', '--disable-accelerated-mjpeg-decode', '--disable-app-list-dismiss-on-blur',
+        '--disable-accelerated-video-decode', '--mute-audio'
+      ];
+
+      if(APP_HEADLESS){
+        puppeteer_args.push('--unlimited-storage');
+        puppeteer_args.push('--force-gpu-mem-available-mb');
+      }else{
+        puppeteer_args.push('--auto-open-devtools-for-tabs');
+      }
+      //console.log(puppeteer_args);
+
       // NEW PUPPETEER
       const browser = await puppeteer.launch({
         headless: APP_HEADLESS,
         ignoreHTTPSErrors: true,
         defaultViewport: null,
-        args: [
-          // '--auto-open-devtools-for-tabs',
-          // '--full-memory-crash-report'
-          '--unlimited-storage', '--force-gpu-mem-available-mb',
-          '--disable-dev-shm-usage',
-          '--enable-sync', '--enable-background-networking', '--no-sandbox', '--disable-setuid-sandbox',
-          '--disable-gpu', '--renderer', '--no-service-autorun', '--no-experiments',
-          '--no-default-browser-check', '--disable-webgl', '--disable-threaded-animation',
-          '--disable-threaded-scrolling', '--disable-in-process-stack-traces', '--disable-histogram-customizer',
-          '--disable-gl-extensions', '--disable-extensions', '--disable-composited-antialiasing',
-          '--disable-canvas-aa', '--disable-3d-apis', '--disable-accelerated-2d-canvas',
-          '--disable-accelerated-jpeg-decoding', '--disable-accelerated-mjpeg-decode', '--disable-app-list-dismiss-on-blur',
-          '--disable-accelerated-video-decode', '--mute-audio'
-        ]
+        args: puppeteer_args
       })
       this.browser = browser
 
@@ -130,9 +148,8 @@ class PuppeteerWhatsApp extends EventEmitter {
       })
 
       // PUPPETEER PAGE ERROR
-      await page.on('pageerror', error => {
-        console.log('function pageerror')
-        console.log(error)
+      await page.on('pageerror', e => {
+        getLog ('pageerror', e)
       })
 
       // BLOCK RESOURCES TO LOAD FAST
@@ -194,7 +211,7 @@ class PuppeteerWhatsApp extends EventEmitter {
       }
 
       // EVALUATE INJECTED TOKEN SESSION
-      const is_token = await page.waitForSelector(APP_KEEP_PHONE_CONNECTED_SELECTOR, { timeout: 29000 }).then(res => {
+      const is_token = await page.waitForSelector(APP_KEEP_PHONE_CONNECTED_SELECTOR, { timeout: 42000 }).then(res => {
         console.log('VALID TOKEN')
         return true
       }).catch(e => {
@@ -278,7 +295,7 @@ class PuppeteerWhatsApp extends EventEmitter {
               }
             })
           } catch (e) {
-            console.log('function exposeFunction(onChangeState)')
+            getLog ('exposeFunction(onChangeState)', e)
           }
         })
 
@@ -309,10 +326,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         this.emit('API', { action: 'ready', value: value, status: true })
       } else await browser.close()
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function start')
-        console.log(e)
-      }
+      getLog('start', e)
     }
   }
 
@@ -376,10 +390,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         }
       })
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function responseBot')
-        console.log(e)
-      }
+      getLog('responseBot', e)
       return false
     }
   }
@@ -391,10 +402,7 @@ class PuppeteerWhatsApp extends EventEmitter {
       if (typeof data_url !== 'undefined' && typeof data_url.host !== 'undefined' && data_url.host != '') return true
       else return false
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function isUrl')
-        console.log(e)
-      }
+      getLog('isUrl', e)
       return false
     }
   }
@@ -410,10 +418,7 @@ class PuppeteerWhatsApp extends EventEmitter {
       var db = low(adapter)
       db.defaults({ token: [] }).write()
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function getDatabaseToken')
-        console.log(e)
-      }
+      getLog('getDatabaseToken', e)
     }
     return db
   }
@@ -436,10 +441,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         }
       }
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function getTimeSend')
-        console.log(e)
-      }
+      getLog('getTimeSend', e)
     }
     return to_time
   }
@@ -454,10 +456,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         await httpProxy.createServer({ target: ws_endpoint, ws: true, localAddress: APP_HOST }).listen(port)
       }
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function setWebSocket')
-        console.log(e)
-      }
+      getLog('setWebSocket', e)
     }
     return 'ws://' + APP_HOST + ':' + port
   }
@@ -469,10 +468,7 @@ class PuppeteerWhatsApp extends EventEmitter {
       const pages_created = await browser.pages()
       return { browser: browser, page: pages_created[0], endpoint: ws_url, type: 'success' }
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function getWebSocketPage')
-        //console.log(e)
-      }
+      getLog('getWebSocketPage', e)
       return { browser: null, page: null, endpoint: e.target.url, type: e.type }
     }
   }
@@ -510,10 +506,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         }
       }, message, id, options)
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function sendMessageToID')
-        // console.log(e);
-      }
+      getLog('sendMessageToID', e)
       return { number: null, message: 'Close', status_code: 501 }
     }
   }
@@ -528,10 +521,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         return me
       })
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function getMe')
-        console.log(e)
-      }
+      getLog('getMe', e)
       return {}
     }
   }
@@ -544,10 +534,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         else return window.Store.Contact.get(id).serialize()
       }, id)
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function getContact')
-        console.log(e)
-      }
+      getLog('getContact', e)
       return {}
     }
   }
@@ -560,10 +547,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         else return window.Store.ProfilePicThumb.get(id).serialize()
       }, id)
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function getProfilePicThumb')
-        console.log(e)
-      }
+      getLog('getProfilePicThumb', e)
       return {}
     }
   }
@@ -576,10 +560,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         else return window.Store.Chat.get(id).serialize()
       }, id)
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function getChat')
-        console.log(e)
-      }
+      getLog('getChat', e)
       return {}
     }
   }
@@ -597,10 +578,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         return { chat: no_chats, unread: no_unread }
       })
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function getChatStats')
-        console.log(e)
-      }
+      getLog('getChatStats', e)
       return { chat: 0, unread: 0 }
     }
   }
@@ -627,10 +605,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         }
       })
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function getChatUnread')
-        console.log(e)
-      }
+      getLog('getChatUnread', e)
       return {}
     }
   }
@@ -648,10 +623,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         return false
       }, id, APP_DEBUG)
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function loadEarlierMsgstById')
-        console.log(e)
-      }
+      getLog('loadEarlierMsgstById', e)
       return false
     }
   }
@@ -669,10 +641,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         return false
       }, id, APP_DEBUG)
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function setContactSeen')
-        console.log(e)
-      }
+      getLog('setContactSeen', e)
       return false
     }
   }
@@ -689,10 +658,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         return false
       }, APP_DEBUG)
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function setLogout')
-        console.log(e)
-      }
+      getLog('setLogout', e)
       return false
     }
   }
@@ -716,10 +682,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         return no_ids
       }
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function sendMessage')
-        console.log(e)
-      }
+      getLog('sendMessage', e)
       return 0
     }
   }
@@ -745,10 +708,7 @@ class PuppeteerWhatsApp extends EventEmitter {
       }
       return { chats: no_chats, message: message, status_code: status_code }
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function sendBroadcast')
-        console.log(e)
-      }
+      getLog('sendBroadcast', e)
       return { chats: 0, message: null, status_code: 501 }
     }
   }
@@ -775,7 +735,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         return to_number
       }, unread)
     } catch (e) {
-      console.log('function getNumbers()')
+      getLog('getNumbers', e)
       return []
     }
   }
@@ -783,22 +743,19 @@ class PuppeteerWhatsApp extends EventEmitter {
   // CHECKED
   async setDestroy (browser, page, token) {
     try {
-      var is_live = await page.evaluate((token, APP_DEBUG) => {
+      var is_live = await page.evaluate((token) => {
         var ls = JSON.parse(JSON.stringify(window.localStorage))
         if (typeof ls['last-wid'] === 'undefined') {
           console.log('DESTROY ' + token)
           return true
         } else return false
-      }, token, APP_DEBUG)
+      }, token)
       if (is_live) {
         console.log('CLOSE PUPPETER')
         await browser.close()
       }
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function setDestroy')
-        console.log(e)
-      }
+      getLog('setDestroy', e)
       return null
     }
   }
@@ -820,10 +777,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         return json
       }, APP_DEBUG)
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function getStatePage')
-        // console.log(e);
-      }
+      getLog('getStatePage', e)
       return {}
     }
   }
@@ -831,14 +785,11 @@ class PuppeteerWhatsApp extends EventEmitter {
   // CHECKED
   async getNavigatorStorage (page) {
     try {
-      return await page.evaluate((APP_DEBUG) => {
+      return await page.evaluate(() => {
         return navigator.storage.estimate()
-      }, APP_DEBUG)
+      })
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function getNavigatorStorage')
-        console.log(e)
-      }
+      getLog('getNavigatorStorage', e)
       return {}
     }
   }
@@ -1001,10 +952,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         }
       }
     } catch (e) {
-      if (APP_DEBUG) {
-        console.log('function startWebService')
-        console.log(e)
-      }
+      getLog('startWebService', e)
     }
   }
 }
