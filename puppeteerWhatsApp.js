@@ -31,15 +31,6 @@ class PuppeteerWhatsApp extends EventEmitter {
   }
 
   // CHECKED
-  getLog (name, e) {
-    if (APP_DEBUG) {
-      console.log('function ' +  name)
-      console.log(moment().format('YYYY-MM-DD HH:mm:ss'));
-      console.log(e)
-    }
-  }
-
-  // CHECKED
   async start (token, bot, webhook) {
     try {
       const time_start = Date.now()
@@ -149,7 +140,7 @@ class PuppeteerWhatsApp extends EventEmitter {
 
       // PUPPETEER PAGE ERROR
       await page.on('pageerror', e => {
-        getLog ('pageerror', e)
+        this.getLog('pageerror', e)
       })
 
       // BLOCK RESOURCES TO LOAD FAST
@@ -295,7 +286,7 @@ class PuppeteerWhatsApp extends EventEmitter {
               }
             })
           } catch (e) {
-            getLog ('exposeFunction(onChangeState)', e)
+            this.getLog('exposeFunction(onChangeState)', e)
           }
         })
 
@@ -326,7 +317,16 @@ class PuppeteerWhatsApp extends EventEmitter {
         this.emit('API', { action: 'ready', value: value, status: true })
       } else await browser.close()
     } catch (e) {
-      getLog('start', e)
+      this.getLog('start', e)
+    }
+  }
+
+  // CHECKED
+  getLog (name, e) {
+    if (APP_DEBUG) {
+      console.log('function ' +  name)
+      console.log(moment().format('YYYY-MM-DD HH:mm:ss'));
+      console.log(e)
     }
   }
 
@@ -390,7 +390,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         }
       })
     } catch (e) {
-      getLog('responseBot', e)
+      this.getLog('responseBot', e)
       return false
     }
   }
@@ -402,7 +402,7 @@ class PuppeteerWhatsApp extends EventEmitter {
       if (typeof data_url !== 'undefined' && typeof data_url.host !== 'undefined' && data_url.host != '') return true
       else return false
     } catch (e) {
-      getLog('isUrl', e)
+      this.getLog('isUrl', e)
       return false
     }
   }
@@ -418,7 +418,7 @@ class PuppeteerWhatsApp extends EventEmitter {
       var db = low(adapter)
       db.defaults({ token: [] }).write()
     } catch (e) {
-      getLog('getDatabaseToken', e)
+      this.getLog('getDatabaseToken', e)
     }
     return db
   }
@@ -441,7 +441,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         }
       }
     } catch (e) {
-      getLog('getTimeSend', e)
+      this.getLog('getTimeSend', e)
     }
     return to_time
   }
@@ -456,7 +456,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         await httpProxy.createServer({ target: ws_endpoint, ws: true, localAddress: APP_HOST }).listen(port)
       }
     } catch (e) {
-      getLog('setWebSocket', e)
+      this.getLog('setWebSocket', e)
     }
     return 'ws://' + APP_HOST + ':' + port
   }
@@ -468,7 +468,7 @@ class PuppeteerWhatsApp extends EventEmitter {
       const pages_created = await browser.pages()
       return { browser: browser, page: pages_created[0], endpoint: ws_url, type: 'success' }
     } catch (e) {
-      getLog('getWebSocketPage', e)
+      this.getLog('getWebSocketPage', e)
       return { browser: null, page: null, endpoint: e.target.url, type: e.type }
     }
   }
@@ -506,7 +506,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         }
       }, message, id, options)
     } catch (e) {
-      getLog('sendMessageToID', e)
+      this.getLog('sendMessageToID', e)
       return { number: null, message: 'Close', status_code: 501 }
     }
   }
@@ -521,7 +521,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         return me
       })
     } catch (e) {
-      getLog('getMe', e)
+      this.getLog('getMe', e)
       return {}
     }
   }
@@ -534,7 +534,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         else return window.Store.Contact.get(id).serialize()
       }, id)
     } catch (e) {
-      getLog('getContact', e)
+      this.getLog('getContact', e)
       return {}
     }
   }
@@ -547,7 +547,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         else return window.Store.ProfilePicThumb.get(id).serialize()
       }, id)
     } catch (e) {
-      getLog('getProfilePicThumb', e)
+      this.getLog('getProfilePicThumb', e)
       return {}
     }
   }
@@ -560,7 +560,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         else return window.Store.Chat.get(id).serialize()
       }, id)
     } catch (e) {
-      getLog('getChat', e)
+      this.getLog('getChat', e)
       return {}
     }
   }
@@ -578,7 +578,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         return { chat: no_chats, unread: no_unread }
       })
     } catch (e) {
-      getLog('getChatStats', e)
+      this.getLog('getChatStats', e)
       return { chat: 0, unread: 0 }
     }
   }
@@ -605,7 +605,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         }
       })
     } catch (e) {
-      getLog('getChatUnread', e)
+      this.getLog('getChatUnread', e)
       return {}
     }
   }
@@ -623,7 +623,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         return false
       }, id, APP_DEBUG)
     } catch (e) {
-      getLog('loadEarlierMsgstById', e)
+      this.getLog('loadEarlierMsgstById', e)
       return false
     }
   }
@@ -641,7 +641,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         return false
       }, id, APP_DEBUG)
     } catch (e) {
-      getLog('setContactSeen', e)
+      this.getLog('setContactSeen', e)
       return false
     }
   }
@@ -658,7 +658,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         return false
       }, APP_DEBUG)
     } catch (e) {
-      getLog('setLogout', e)
+      this.getLog('setLogout', e)
       return false
     }
   }
@@ -682,7 +682,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         return no_ids
       }
     } catch (e) {
-      getLog('sendMessage', e)
+      this.getLog('sendMessage', e)
       return 0
     }
   }
@@ -708,7 +708,7 @@ class PuppeteerWhatsApp extends EventEmitter {
       }
       return { chats: no_chats, message: message, status_code: status_code }
     } catch (e) {
-      getLog('sendBroadcast', e)
+      this.getLog('sendBroadcast', e)
       return { chats: 0, message: null, status_code: 501 }
     }
   }
@@ -735,7 +735,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         return to_number
       }, unread)
     } catch (e) {
-      getLog('getNumbers', e)
+      this.getLog('getNumbers', e)
       return []
     }
   }
@@ -755,7 +755,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         await browser.close()
       }
     } catch (e) {
-      getLog('setDestroy', e)
+      this.getLog('setDestroy', e)
       return null
     }
   }
@@ -777,7 +777,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         return json
       }, APP_DEBUG)
     } catch (e) {
-      getLog('getStatePage', e)
+      this.getLog('getStatePage', e)
       return {}
     }
   }
@@ -789,7 +789,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         return navigator.storage.estimate()
       })
     } catch (e) {
-      getLog('getNavigatorStorage', e)
+      this.getLog('getNavigatorStorage', e)
       return {}
     }
   }
@@ -952,7 +952,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         }
       }
     } catch (e) {
-      getLog('startWebService', e)
+      this.getLog('startWebService', e)
     }
   }
 }
