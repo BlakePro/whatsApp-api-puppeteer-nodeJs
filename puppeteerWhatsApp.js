@@ -16,7 +16,7 @@ const APP_HOST = '0.0.0.0'
 const APP_PORT = 8333
 const APP_SERVER = 'http://localhost:' + APP_PORT
 const APP_URI = 'https://web.whatsapp.com'
-const APP_KEEP_PHONE_CONNECTED_SELECTOR = '[data-asset-intro-image="true"]'
+const APP_KEEP_PHONE_CONNECTED_SELECTOR = '[data-asset-intro-image-light="true"]'
 const APP_QR_VALUE_SELECTOR = '[data-ref]'
 const APP_LANGUAGE = 'en'
 const APP_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36'
