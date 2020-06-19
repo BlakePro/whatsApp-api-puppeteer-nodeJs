@@ -130,7 +130,6 @@ class PuppeteerWhatsApp extends EventEmitter {
                 headers: { 'Content-Type': 'application/json' }
               }
               const uri_fetch = APP_SERVER + '/api/' + token_name + '/start'
-              console.log(uri_fetch)
               fetch(uri_fetch, send)
               page.close()
             }
@@ -359,15 +358,11 @@ class PuppeteerWhatsApp extends EventEmitter {
                       body: JSON.stringify({ token: token, message: message.body, data: JSON.stringify(message) }),
                       headers: { 'Content-Type': 'application/json' }
                     }
-                    //console.log(send);
                     fetch(bot, send).then(res => res.json()).then(parsed => {
-                      //console.log(parsed);
                       if (typeof parsed === 'object' && parsed.status == true && typeof parsed.message !== 'undefined') {
                         var bot_message = parsed.message
                         var options = {}
-                        if (typeof parsed.options !== 'undefined') {
-                          try { var options = JSON.parse(parsed.options) } catch (e) {}
-                        }
+                        if (typeof parsed.options !== 'undefined')var options = parsed.options;
                         WhatsApp.sendMessage(page, from, bot_message, options)
                       }
                     })
@@ -482,19 +477,20 @@ class PuppeteerWhatsApp extends EventEmitter {
             const get_id = window.Store.Chat.get(id)
             if (typeof get_id.id !== 'undefined' && typeof get_id.id.server !== 'undefined' && get_id.id.server == 'c.us') {
               window.App.sendSeen(id)
-              const number = id.replace(/\D+/g, '')
 
+              const number = id.replace(/\D+/g, '')
               const replaceNumber = (message, number) => message.replace(/{number}/g, number)
 
-              if (typeof message === 'string' && message != '') {
+              var noption = JSON.parse(options);
+              if ((typeof message === 'string' && message != '') || options != '') {
                 var message = replaceNumber(message, number)
-                window.App.sendMessage(get_id, message, options)
+                window.App.sendMessage(get_id, message, noption)
                 return { number: number, message: message, status_code: 200 }
               } else if (Array.isArray(message) && message.length > 0) {
                 message.forEach((data_message) => {
                   if (typeof data_message === 'string' && data_message != '') {
                     var message = replaceNumber(data_message, number)
-                    window.App.sendMessage(get_id, data_message, options)
+                    window.App.sendMessage(get_id, data_message, noption)
                     return { number: number, message: data_message, status_code: 200 }
                   }
                 })

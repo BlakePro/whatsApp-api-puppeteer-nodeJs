@@ -51,47 +51,62 @@ exports.WindowUtils = () => {
     return false;
   };
 
-
   window.App.sendMessage = async (chat, content, options = {}) => {
+
+      let locationOptions = {};
+      if (typeof options.location !== 'undefined') {
+        locationOptions = {
+          type: 'location',
+          loc: options.location.name,
+          lat: options.location.latitude,
+          lng: options.location.longitude
+        };
+        delete options.location;
+      }
+
       let attOptions = {};
       if (options.attachment) {
-          attOptions = await window.App.processMediaData(options.attachment, options.sendAudioAsVoice);
-          delete options.attachment;
+        //atob(decodeURIComponent(dataToBeDecoded));
+        var arr_attachment = (options.attachment).split(',')
+        var attachment = decodeURIComponent(arr_attachment[1]);
+        var mimetype = (arr_attachment[0]).replace('data:', '');
+        mimetype = mimetype.replace(';base64', '');
+
+        if (options.caption)var filename = options.caption;
+        else var filename = "file";
+
+        var att = {
+          data: attachment,
+          mimetype: mimetype,
+          filename: filename
+        }
+
+        attOptions = await window.App.processMediaData(att, options.sendAudioAsVoice);
+        delete options.attachment;
       }
 
       let quotedMsgOptions = {};
-      if (options.quotedMessageId) {
-          let quotedMessage = window.Store.Msg.get(options.quotedMessageId);
-          if (quotedMessage.canReply()) {
-              quotedMsgOptions = quotedMessage.msgContextInfo(chat);
-          }
-          delete options.quotedMessageId;
+      if (options.quoted) {
+        let quotedMessage = window.Store.Msg.get(options.quoted);
+        if (quotedMessage.canReply()) {
+          quotedMsgOptions = quotedMessage.msgContextInfo(chat);
+        }
+        delete options.quoted;
       }
 
       if (options.mentionedJidList) {
-          options.mentionedJidList = options.mentionedJidList.map(cId => window.Store.Contact.get(cId).id);
-      }
-
-      let locationOptions = {};
-      if (options.location) {
-          locationOptions = {
-              type: 'location',
-              loc: options.location.name,
-              lat: options.location.latitude,
-              lng: options.location.longitude
-          };
-          delete options.location;
+        options.mentionedJidList = options.mentionedJidList.map(cId => window.Store.Contact.get(cId).id);
       }
 
       if (options.preview) {
-          delete options.preview;
-          const link = window.Store.Validators.findLink(content);
-          if (link) {
-              const preview = await window.Store.Wap.queryLinkPreview(link.url);
-              preview.preview = true;
-              preview.subtype = 'url';
-              options = { ...options, ...preview };
-          }
+        delete options.preview;
+        const link = window.Store.Validators.findLink(content);
+        if (link) {
+          const preview = await window.Store.Wap.queryLinkPreview(link.url);
+          preview.preview = true;
+          preview.subtype = 'url';
+          options = { ...options, ...preview };
+        }
       }
 
       const newMsgId = new window.Store.MsgKey({
@@ -116,7 +131,6 @@ exports.WindowUtils = () => {
           ...attOptions,
           ...quotedMsgOptions
       };
-
       await window.Store.SendMessage.addAndSendMsgToChat(chat, message);
       return window.Store.Msg.get(newMsgId._serialized);
   };
@@ -133,7 +147,7 @@ exports.WindowUtils = () => {
        isGif: mediaData.isGif
     });
 
-    if(forceVoice && mediaData.type === 'audio') {
+    if(mediaData.type === 'audio') {
        mediaData.type = 'ptt';
     }
 
