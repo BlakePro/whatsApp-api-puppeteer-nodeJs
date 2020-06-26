@@ -52,7 +52,6 @@ exports.WindowUtils = () => {
   };
 
   window.App.sendMessage = async (chat, content, options = {}) => {
-
       let locationOptions = {};
       if (typeof options.location !== 'undefined') {
         locationOptions = {

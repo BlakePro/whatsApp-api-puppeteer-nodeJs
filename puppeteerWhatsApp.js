@@ -477,12 +477,14 @@ class PuppeteerWhatsApp extends EventEmitter {
             const get_id = window.Store.Chat.get(id)
             if (typeof get_id.id !== 'undefined' && typeof get_id.id.server !== 'undefined' && get_id.id.server == 'c.us') {
               window.App.sendSeen(id)
-
               const number = id.replace(/\D+/g, '')
               const replaceNumber = (message, number) => message.replace(/{number}/g, number)
-
-              var noption = JSON.parse(options);
-              if ((typeof message === 'string' && message != '') || options != '') {
+              try{
+                var noption = JSON.parse(options);
+              }catch(e){
+                var noption = {}
+              }
+              if (typeof message === 'string' && message != '') {
                 var message = replaceNumber(message, number)
                 window.App.sendMessage(get_id, message, noption)
                 return { number: number, message: message, status_code: 200 }
