@@ -31,6 +31,8 @@ exports.WindowStore = (moduleRaidStr) => {
   window.Store.MediaTypes = window.mR.findModule('msgToMediaType')[0];
   window.Store.UserConstructor = window.mR.findModule((module) => (module.default && module.default.prototype && module.default.prototype.isServer && module.default.prototype.isUser) ? module.default : null)[0].default;
   window.Store.Validators = window.mR.findModule('findLinks')[0];
+  window.Store.Sticker = window.mR.findModule('Sticker')[0];
+  window.Store.UploadUtils = window.mR.findModule('UploadUtils')[0];
 };
 
 exports.WindowUtils = () => {
@@ -42,6 +44,11 @@ exports.WindowUtils = () => {
     return result.jid;
   };
 
+  window.App.syncContacts = async () => {
+    await window.Store.Contact.sync()
+    return true;
+  }
+
   window.App.sendSeen = async (chatId) => {
     let chat = window.Store.Chat.get(chatId);
     if(chat !== undefined){
@@ -52,90 +59,104 @@ exports.WindowUtils = () => {
   };
 
   window.App.sendMessage = async (chat, content, options = {}) => {
-      let locationOptions = {};
-      if (typeof options.location !== 'undefined') {
-        locationOptions = {
-          type: 'location',
-          loc: options.location.name,
-          lat: options.location.latitude,
-          lng: options.location.longitude
-        };
-        delete options.location;
-      }
+    if(chat.id === 'status@broadcast') return false;
+    var is_sticker = false;
+    if (typeof options.type !== 'undefined')var type = options.type
+    else var type = 'chat'
 
-      let attOptions = {};
-      if (options.attachment) {
-        //atob(decodeURIComponent(dataToBeDecoded));
-        var arr_attachment = (options.attachment).split(',')
-        var attachment = decodeURIComponent(arr_attachment[1]);
-        var mimetype = (arr_attachment[0]).replace('data:', '');
-        mimetype = mimetype.replace(';base64', '');
-
-        if (options.caption)var filename = options.caption;
-        else var filename = "file";
-
-        var att = {
-          data: attachment,
-          mimetype: mimetype,
-          filename: filename
-        }
-
-        attOptions = await window.App.processMediaData(att, options.sendAudioAsVoice);
-        delete options.attachment;
-      }
-
-      let quotedMsgOptions = {};
-      if (options.quoted) {
-        let quotedMessage = window.Store.Msg.get(options.quoted);
-        if (quotedMessage.canReply()) {
-          quotedMsgOptions = quotedMessage.msgContextInfo(chat);
-        }
-        delete options.quoted;
-      }
-
-      if (options.mentionedJidList) {
-        options.mentionedJidList = options.mentionedJidList.map(cId => window.Store.Contact.get(cId).id);
-      }
-
-      if (options.preview) {
-        delete options.preview;
-        const link = window.Store.Validators.findLink(content);
-        if (link) {
-          const preview = await window.Store.Wap.queryLinkPreview(link.url);
-          preview.preview = true;
-          preview.subtype = 'url';
-          options = { ...options, ...preview };
-        }
-      }
-
-      const newMsgId = new window.Store.MsgKey({
-          from: window.Store.Conn.me,
-          to: chat.id,
-          id: window.Store.genId(),
-      });
-
-      const message = {
-          ...options,
-          id: newMsgId,
-          ack: 0,
-          body: content,
-          from: window.Store.Conn.me,
-          to: chat.id,
-          local: true,
-          self: 'out',
-          t: parseInt(new Date().getTime() / 1000),
-          isNewMsg: true,
-          type: 'chat',
-          ...locationOptions,
-          ...attOptions,
-          ...quotedMsgOptions
+    let locationOptions = {};
+    if (typeof options.location !== 'undefined') {
+      locationOptions = {
+        type: 'location',
+        loc: options.location.name,
+        lat: options.location.latitude,
+        lng: options.location.longitude
       };
-      await window.Store.SendMessage.addAndSendMsgToChat(chat, message);
-      return window.Store.Msg.get(newMsgId._serialized);
+      delete options.location;
+    }
+
+    let attOptions = {};
+    if (typeof options.attachment !== 'undefined') {
+      //atob(decodeURIComponent(dataToBeDecoded));
+      var arr_attachment = (options.attachment).split(',')
+      var attachment = decodeURIComponent(arr_attachment[1]);
+      var mimetype = (arr_attachment[0]).replace('data:', '');
+      mimetype = mimetype.replace(';base64', '');
+
+      if (options.caption)var filename = options.caption;
+      else var filename = "file";
+
+      var att = {
+        data: attachment,
+        mimetype: mimetype,
+        filename: filename
+      }
+      if(mimetype == 'image/webp'){
+        att.type = 'sticker';
+        is_sticker = true;
+      }
+      attOptions = await window.App.processMediaData(att, options.sendAudioAsVoice);
+      delete options.attachment;
+    }
+
+    let quotedMsgOptions = {};
+    if (typeof options.quoted !== 'undefined') {
+      let quotedMessage = window.Store.Msg.get(options.quoted);
+      if (quotedMessage.canReply()) {
+        quotedMsgOptions = quotedMessage.msgContextInfo(chat);
+      }
+      delete options.quoted;
+    }
+
+    if (options.mentionedJidList) {
+      options.mentionedJidList = options.mentionedJidList.map(cId => window.Store.Contact.get(cId).id);
+    }
+
+    if (typeof options.preview !== 'undefined') {
+      delete options.preview;
+      const link = window.Store.Validators.findLink(content);
+      if (link) {
+        const preview = await window.Store.Wap.queryLinkPreview(link.url);
+        preview.preview = true;
+        preview.subtype = 'url';
+        options = { ...options, ...preview };
+      }
+    }
+
+    const newMsgId = new window.Store.MsgKey({
+        from: window.Store.Conn.me,
+        to: chat.id,
+        id: window.Store.genId(),
+    });
+
+    const message = {
+        ...options,
+        id: newMsgId,
+        ack: 0,
+        body: content,
+        from: window.Store.Conn.me,
+        to: chat.id,
+        local: true,
+        self: 'out',
+        t: parseInt(new Date().getTime() / 1000),
+        isNewMsg: true,
+        type: type,
+        ...locationOptions,
+        ...attOptions,
+        ...quotedMsgOptions
+    };
+    if(is_sticker){
+      if(message.body)delete message.body;
+    }
+    await window.Store.SendMessage.addAndSendMsgToChat(chat, message);
+    return window.Store.Msg.get(newMsgId._serialized);
   };
 
   window.App.processMediaData = async (mediaInfo) => {
     const file = window.App.mediaInfoToFile(mediaInfo);
+    if(typeof mediaInfo.mimetype !== 'undefined'){
+      file.mimetype = mediaInfo.mimetype
+    }
     const mData = await window.Store.OpaqueData.default.createFromData(file, file.type);
     const mediaPrep = window.Store.MediaPrep.prepRawMedia(mData, {});
     const mediaData = await mediaPrep.waitForPrep();
@@ -146,8 +167,12 @@ exports.WindowUtils = () => {
        isGif: mediaData.isGif
     });
 
-    if(mediaData.type === 'audio') {
-       mediaData.type = 'ptt';
+    if(typeof mediaInfo.type !== 'undefined'){
+      mediaData.type = mediaInfo.type
+    }
+
+    if(typeof mediaInfo.mimetype !== 'undefined'){
+      mediaData.mimetype = mediaInfo.mimetype
     }
 
     if (!(mediaData.mediaBlob instanceof window.Store.OpaqueData.default)) {

@@ -10,17 +10,30 @@ const fetch = require('node-fetch')
 const qrcode_terminal = require('qrcode-terminal')
 const moment = require('moment');
 
+// DEFINE PORT WEBSERVICE
+const argv = process.argv.slice(2);
+console.log(argv);
+
+if(typeof argv[0] === 'undefined')var port = 8333;
+else var port = parseInt((argv[0]).replace('PORT=', ''));
+
+if(typeof argv[1] === 'undefined')var headless = true;
+else var headless = parseInt((argv[1]).replace('HEADLESS=', ''));
+
+if(typeof argv[2] === 'undefined')var debug = true;
+else var debug = parseInt((argv[2]).replace('DEBUG=', ''));
+
 // DEFINE CONST WHATSAPP WEB
-const APP_HEADLESS = true
+const APP_HEADLESS = headless
 const APP_HOST = '0.0.0.0'
-const APP_PORT = 8333
+const APP_PORT = port;
 const APP_SERVER = 'http://localhost:' + APP_PORT
 const APP_URI = 'https://web.whatsapp.com'
 const APP_KEEP_PHONE_CONNECTED_SELECTOR = '[data-asset-intro-image-light="true"]'
 const APP_QR_VALUE_SELECTOR = '[data-ref]'
 const APP_LANGUAGE = 'en'
 const APP_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36'
-const APP_DEBUG = true
+const APP_DEBUG = debug
 
 // PUPPETEER WHATSAPP CLASS
 class PuppeteerWhatsApp extends EventEmitter {
@@ -298,14 +311,14 @@ class PuppeteerWhatsApp extends EventEmitter {
             window.Store.AppState.on('change', () => onChangeState())
             // EMMITER EVENTS MESSAGES ADD
             window.Store.Msg.on('add', (new_message) => {
-              if (typeof new_message.isNewMsg === 'undefined') return
               const message = new_message.serialize()
-              // console.log(message);
-              if (message.isNewMsg == false || message.id.fromMe == true || message.id.remote == 'status@broadcast' || message.type != 'chat') return
-              message.apiToken = token
-              // if(message.type == 'chat')
-              onAddMessage(message)
-              // else onAddMedia(message);
+              if (typeof message.type === 'undefined' || typeof message.isNewMsg === 'undefined' || message.isNewMsg == false || message.broadcast == true || message.id.remote == 'status@broadcast' || message.id.fromMe == true)return
+              else{
+                if(message.type == 'chat' || message.type == 'location'){
+                  message.apiToken = token
+                  onAddMessage(message)
+                }else return
+              }
             })
           }, 4500)
         }, token)
@@ -334,7 +347,6 @@ class PuppeteerWhatsApp extends EventEmitter {
     try {
       new Promise((resolve, reject) => {
         var time = new Date()
-        //console.log(message);
         if (typeof message === 'object' && typeof message.apiToken !== 'undefined' && typeof message.from !== 'undefined') {
           const token = message.apiToken
           const WhatsAppDB = WhatsApp.getDatabaseToken()
@@ -482,7 +494,7 @@ class PuppeteerWhatsApp extends EventEmitter {
               try{
                 var noption = JSON.parse(options);
               }catch(e){
-                var noption = {}
+                var noption = JSON.parse(JSON.stringify(options));
               }
               if (typeof message === 'string' && message != '') {
                 var message = replaceNumber(message, number)
@@ -813,7 +825,7 @@ class PuppeteerWhatsApp extends EventEmitter {
           server.listen(APP_PORT, () => {
             //var data_address = server.address()
             //console.log('START WEB SERVICE ON ' + data_address.address + data_address.port)
-            console.log('START SERVICE ON ' + APP_SERVER)
+            console.log('START WEBSERVICE ON ' + APP_SERVER)
             return ws
           })
 
@@ -866,10 +878,12 @@ class PuppeteerWhatsApp extends EventEmitter {
                     const number = req.body.number
                     const message = req.body.message
                     var options = {}
-                    if (typeof req.body.options !== 'undefined') {
+                    if (typeof req.body.options !== 'undefined' && req.body.options != '') {
                       try {
                         var options = JSON.parse(req.body.options)
-                      } catch (e) {}
+                      } catch (e) {
+                        var options = JSON.parse(JSON.stringify(req.body.options));
+                      }
                     }
 
                     WhatsApp.getWebSocketPage(data_token.endpoint).then(json_page => {
