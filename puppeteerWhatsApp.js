@@ -18,10 +18,10 @@ if(typeof argv[0] === 'undefined')var port = 8333;
 else var port = parseInt((argv[0]).replace('PORT=', ''));
 
 if(typeof argv[1] === 'undefined')var headless = true;
-else var headless = parseInt((argv[1]).replace('HEADLESS=', ''));
+else var headless = Boolean((argv[1]).replace('HEADLESS=', ''));
 
 if(typeof argv[2] === 'undefined')var debug = true;
-else var debug = parseInt((argv[2]).replace('DEBUG=', ''));
+else var debug = Boolean((argv[2]).replace('DEBUG=', ''));
 
 // DEFINE CONST WHATSAPP WEB
 const APP_HEADLESS = headless
@@ -29,7 +29,7 @@ const APP_HOST = '0.0.0.0'
 const APP_PORT = port;
 const APP_SERVER = 'http://localhost:' + APP_PORT
 const APP_URI = 'https://web.whatsapp.com'
-const APP_KEEP_PHONE_CONNECTED_SELECTOR = '[data-asset-intro-image-light="true"]'
+const APP_KEEP_PHONE_CONNECTED_SELECTOR = '[data-tab]'
 const APP_QR_VALUE_SELECTOR = '[data-ref]'
 const APP_LANGUAGE = 'en'
 const APP_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36'
@@ -348,6 +348,7 @@ class PuppeteerWhatsApp extends EventEmitter {
       new Promise((resolve, reject) => {
         var time = new Date()
         if (typeof message === 'object' && typeof message.apiToken !== 'undefined' && typeof message.from !== 'undefined') {
+          if( APP_DEBUG )console.log(message);
           const token = message.apiToken
           const WhatsAppDB = WhatsApp.getDatabaseToken()
           const data_token = WhatsAppDB.get('token').find({ name: token }).value()
