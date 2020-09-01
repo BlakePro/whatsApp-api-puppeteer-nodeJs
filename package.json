@@ -1,14 +1,14 @@
 {
-  "name": "WhatsAppWebApi",
+  "name": "WhatsAppApi",
   "version": "1.0.0",
-  "description": "WhatsAppWeb API via Puppeteer",
+  "description": "WhatsApp API via Puppeteer",
   "author": "Cristian Yosafat Hernández Ruiz",
   "license": "ISC",
   "main": "indexWhatsApp.js",
   "private": "true",
   "scripts": {
-    "start": "nohup node indexWhatsApp.js $PORT &",
-    "test": "node indexWhatsApp.js $PORT"
+    "start": "nohup node indexWhatsApp.js",
+    "test": "node indexWhatsApp.js"
   },
   "dependencies": {
     "body-parser": "^1.19.0",

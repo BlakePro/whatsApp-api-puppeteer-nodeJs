@@ -21,14 +21,20 @@
 sudo npm i
 ```
 
-**Run Webservice**
+**Run WebService**
 ```sh
-npm test PORT=80 HEADLESS=false
+npm test PORT=8333 HEADLESS=false DEBUG=true
 ```
 
-**Run Webservice (background mode)**
+**Run WebService (background mode)**
 ```sh
-npm start PORT=80 HEADLESS=false
+npm start PORT=8333 HEADLESS=false DEBUG=true &
+```
+
+**Stop WebService (background mode)**
+```sh
+ps aux | grep indexWhatsApp.js
+kill -9 PID_NUMBER
 ```
 
 <a name="scratch"></a>
