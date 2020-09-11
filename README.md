@@ -1,12 +1,11 @@
 <br>
 <p align="center">
   <a href="https://github.com/BlakePro/WhatsAppApiNodeJS">
-    <img src="Api_WhatsApp_Bot.png" alt="Api WhatsApp Bot Unofficial" width="120" height="120">
+    <img src="Api_WhatsApp_Bot.png" alt="Api WhatsApp Bot Unofficial" width="140" height="140">
   </a>
-  <h3 align="center">Unofficial API for WhatsApp + Bot</h3>
+  <h1 align="center">Unofficial API for WhatsApp + Bot</h1>
 </p>
-
-# Unofficial API for WhatsApp + Bot
+<br>
 
 ## Table of Contents
 
