@@ -21,17 +21,18 @@
 <a name="endpoints"></a>
 | Endpoint        | Post           |
 | -------------   | -------------  |
-| stats           |                |
-| state           |                |
-| me              |                |
+| start           | bot: url <br>  webhook: url  |
 | contact         | number: string |
 | photo           | number: string |
-| chat            |                |
-| unread          |                |
 | seen            | number: string **(required)** |
 | message         | number: **string / list** <br> message: **string / list**  |
 | media           | number: string **(required)** <br> option: json **(required)** <br><br> **File**<br>```{"caption": "", "attachment": "(base64)"``` <br> **Link Preview**<br>```{"content": "(url + string)", "preview": "true"```  <br> |
 | download        | option: json **(required)** <br> ```{"clientUrl": "", "mimetype": "", "mediaKey": "", "type": ""}``` <br>  |
+| chat            |                |
+| unread          |                |
+| stats           |                |
+| state           |                |
+| me              |                |
 | logout          |                |
 | storage         |                |
 
