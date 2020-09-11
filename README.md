@@ -19,7 +19,6 @@
 <a name="api"></a>
 ## Api
 <a name="endpoints"></a>
-**Endpoints**
 | Endpoint        | Post           |
 | -------------   | -------------  |
 | stats           | empty          |
@@ -29,10 +28,10 @@
 | photo           | number: string |
 | chat            | empty          |
 | unread          | empty          |
-| seen            | number: string **(requiered)** |
+| seen            | number: string **(required)** |
 | message         | number: **string / list** <br> message: **string / list**  |
-| media           | number: string **(requiered)** <br> option: json **(requiered)** <br> **Media**```{"caption": "", "attachment": "(base64)"``` <br> **Link Preview**```{"content": "(url string)", "preview": "true"```  |
-| download        | option: json **(requiered)** <br> ```{"clientUrl": "", "mimetype": "", "mediaKey": "", "type": ""}```  |
+| media           | number: string **(required)** <br> option: json **(required)** <br><br> **Media**<br>```{"caption": "", "attachment": "(base64)"``` <br> **Link Preview**<br>```{"content": "(url + string)", "preview": "true"```  |
+| download        | option: json **(required)** <br> ```{"clientUrl": "", "mimetype": "", "mediaKey": "", "type": ""}```  |
 | logout          | empty                               |
 | storage         | empty                               |
 
