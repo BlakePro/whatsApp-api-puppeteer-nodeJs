@@ -1,8 +1,11 @@
-# Unofficial API for WhatsApp + BOT
-
+# Unofficial API for WhatsApp + Bot + WebHook
 
 ## Table of Contents
-* **[Start](#start)**
+* **[Api](#api)**
+  - [Endpoints](#endpoints)
+* **[Bot](#bot)**
+  - [Endpoints](#bot)
+* **[Install & Start](#start)**
   - [Install Dependencies](#dependencies)
   - [Run Webservice](#run)
   - [Run Webservice (background mode)](#runbackground)
@@ -12,8 +15,14 @@
   - [Install Utilities from Puppeteer](#utilities)
   - [Clone GitHub Repo](#clone)
 
+
+<a name="api"></a>
+## Api
+<a name="endpoints"></a>
+**Endpoints**
+
 <a name="start"></a>
-## Start
+## Install & Start
 
 <a name="dependencies"></a>
 **Install Dependencies**

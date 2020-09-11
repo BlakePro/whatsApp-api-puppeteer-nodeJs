@@ -33,6 +33,7 @@ exports.WindowStore = (moduleRaidStr) => {
   window.Store.Validators = window.mR.findModule('findLinks')[0];
   window.Store.Sticker = window.mR.findModule('Sticker')[0];
   window.Store.UploadUtils = window.mR.findModule('UploadUtils')[0];
+  window.Store.WidFactory = window.mR.findModule('createWid')[0];
 };
 
 exports.WindowUtils = () => {
@@ -84,17 +85,22 @@ exports.WindowUtils = () => {
       mimetype = mimetype.replace(';base64', '');
 
       if (options.caption)var filename = options.caption;
-      else var filename = "file";
+      else var filename = 'file';
 
       var att = {
         data: attachment,
         mimetype: mimetype,
         filename: filename
       }
+      //console.log(mimetype);
+
       if(mimetype == 'image/webp'){
         att.type = 'sticker';
+        delete options.filename;
+        delete att.filename;
         is_sticker = true;
       }
+
       attOptions = await window.App.processMediaData(att, options.sendAudioAsVoice);
       delete options.attachment;
     }
@@ -102,7 +108,7 @@ exports.WindowUtils = () => {
     let quotedMsgOptions = {};
     if (typeof options.quoted !== 'undefined') {
       let quotedMessage = window.Store.Msg.get(options.quoted);
-      if (quotedMessage.canReply()) {
+      if(quotedMessage.canReply()){
         quotedMsgOptions = quotedMessage.msgContextInfo(chat);
       }
       delete options.quoted;
@@ -114,12 +120,16 @@ exports.WindowUtils = () => {
 
     if (typeof options.preview !== 'undefined') {
       delete options.preview;
-      const link = window.Store.Validators.findLink(content);
-      if (link) {
-        const preview = await window.Store.Wap.queryLinkPreview(link.url);
-        preview.preview = true;
-        preview.subtype = 'url';
-        options = { ...options, ...preview };
+      var content = options.content;
+      if(content != ''){
+        if(options.content)delete options.content;
+        const link = window.Store.Validators.findLink(content);
+        if(link){
+          const preview = await window.Store.Wap.queryLinkPreview(link.url);
+          preview.preview = true;
+          preview.subtype = 'url';
+          options = { ...options, ...preview };
+        }
       }
     }
 
@@ -147,57 +157,60 @@ exports.WindowUtils = () => {
     };
     if(is_sticker){
       if(message.body)delete message.body;
+      if(message.caption)delete message.caption;
+      if(message.type)message.type = 'sticker';
+      if(message.mimetype)message.mimetype = 'image/webp';
     }
+    //console.log(message)
     await window.Store.SendMessage.addAndSendMsgToChat(chat, message);
     return window.Store.Msg.get(newMsgId._serialized);
   };
 
-  window.App.processMediaData = async (mediaInfo) => {
+  window.App.processMediaData = async (mediaInfo, forceVoice) => {
     const file = window.App.mediaInfoToFile(mediaInfo);
-    if(typeof mediaInfo.mimetype !== 'undefined'){
-      file.mimetype = mediaInfo.mimetype
-    }
     const mData = await window.Store.OpaqueData.default.createFromData(file, file.type);
     const mediaPrep = window.Store.MediaPrep.prepRawMedia(mData, {});
     const mediaData = await mediaPrep.waitForPrep();
     const mediaObject = window.Store.MediaObject.getOrCreateMediaObject(mediaData.filehash);
 
     const mediaType = window.Store.MediaTypes.msgToMediaType({
-       type: mediaData.type,
-       isGif: mediaData.isGif
+        type: mediaData.type,
+        isGif: mediaData.isGif
     });
 
-    if(typeof mediaInfo.type !== 'undefined'){
-      mediaData.type = mediaInfo.type
-    }
-
-    if(typeof mediaInfo.mimetype !== 'undefined'){
-      mediaData.mimetype = mediaInfo.mimetype
+    if (forceVoice && mediaData.type === 'audio') {
+      mediaData.type = 'ptt';
     }
 
     if (!(mediaData.mediaBlob instanceof window.Store.OpaqueData.default)) {
-       mediaData.mediaBlob = await window.Store.OpaqueData.default.createFromData(mediaData.mediaBlob, mediaData.mediaBlob.type);
+      mediaData.mediaBlob = await window.Store.OpaqueData.default.createFromData(mediaData.mediaBlob, mediaData.mediaBlob.type);
     }
 
     mediaData.renderableUrl = mediaData.mediaBlob.url();
     mediaObject.consolidate(mediaData.toJSON());
     mediaData.mediaBlob.autorelease();
 
-    const uploadedMedia = await window.Store.MediaUpload.uploadMedia({ mimetype: mediaData.mimetype, mediaObject, mediaType });
-    if (!uploadedMedia) {
-       throw new Error('upload failed: media entry was not created');
+    const uploadedMedia = await window.Store.MediaUpload.uploadMedia({
+      mimetype: mediaData.mimetype,
+      mediaObject,
+      mediaType
+    });
+
+    const mediaEntry = uploadedMedia.mediaEntry;
+    if (!mediaEntry) {
+      throw new Error('upload failed: media entry was not created');
     }
 
     mediaData.set({
-       clientUrl: uploadedMedia.mmsUrl,
-       directPath: uploadedMedia.directPath,
-       mediaKey: uploadedMedia.mediaKey,
-       mediaKeyTimestamp: uploadedMedia.mediaKeyTimestamp,
-       filehash: mediaObject.filehash,
-       uploadhash: uploadedMedia.uploadHash,
-       size: mediaObject.size,
-       streamingSidecar: uploadedMedia.sidecar,
-       firstFrameSidecar: uploadedMedia.firstFrameSidecar
+      clientUrl: mediaEntry.mmsUrl,
+      directPath: mediaEntry.directPath,
+      mediaKey: mediaEntry.mediaKey,
+      mediaKeyTimestamp: mediaEntry.mediaKeyTimestamp,
+      filehash: mediaObject.filehash,
+      uploadhash: mediaEntry.uploadHash,
+      size: mediaObject.size,
+      streamingSidecar: mediaEntry.sidecar,
+      firstFrameSidecar: mediaEntry.firstFrameSidecar
     });
 
     return mediaData;
