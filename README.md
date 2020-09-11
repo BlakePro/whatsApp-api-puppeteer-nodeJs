@@ -20,7 +20,6 @@
   - [Endpoints](#endpoints)
   - [Examples (CURL)](#apiexamples)
 * **[Bot](#bot)**
-  - [Run](#botexample)
 
 <a name="start"></a>
 ## Install & Start
@@ -127,7 +126,6 @@ curl -X POST \
 
 <a name="bot"></a>
 ## Bot (php)
-<a name="botexample"></a>
 - **Start Server PHP**
 ```sh
   php -l 0.0.0.0:8334
