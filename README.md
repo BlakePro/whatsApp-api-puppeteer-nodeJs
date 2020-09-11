@@ -1,4 +1,4 @@
-# Unofficial API for WhatsApp + Bot + WebHook
+# Unofficial API for WhatsApp + Bot + Webhook
 
 ## Table of Contents
 * **[Api](#api)**
@@ -20,6 +20,22 @@
 ## Api
 <a name="endpoints"></a>
 **Endpoints**
+| ENDPOINT        | POST           |
+| -------------   | -------------  |
+| stats           | empty          |
+| state           | empty          |
+| me              | empty          |
+| contact         | number: string |
+| photo           | number: string |
+| chat            | empty          |
+| unread          | empty          |
+| seen            | number: string |
+| message         | number: string \n message: string   |
+| media           | number: string \n message: string   |
+| download        | number: string \n message: string   |
+| logout          | empty                               |
+| storage         | empty                               |
+
 
 <a name="start"></a>
 ## Install & Start
