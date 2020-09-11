@@ -1,11 +1,7 @@
 # Unofficial API for WhatsApp + Bot + Webhook
 
 ## Table of Contents
-* **[Api](#api)**
-  - [Endpoints](#endpoints)
-  - [Api Examples (CURL)](#apicurl)
-* **[Bot](#bot)**
-  - [Endpoints](#bot)
+
 * **[Install & Start](#start)**
   - [Install Dependencies](#dependencies)
   - [Run Webservice](#run)
@@ -15,54 +11,11 @@
   - [Install Node](#node)
   - [Install Utilities from Puppeteer](#utilities)
   - [Clone GitHub Repo](#clone)
-
-
-<a name="api"></a>
-## Api
-<a name="endpoints"></a>
-| Endpoint        | Post           |
-| -------------   | -------------  |
-| start           | bot: url <br>  webhook: url  |
-| contact         | number: string |
-| photo           | number: string |
-| seen            | number: string **(required)** |
-| message         | number: string / list <br> message: string / list |
-| media           | number: string **(required)** <br> option: json **(required)** <br><br><br> **Option -  File**<br>```{"caption": "", "attachment": "(base64)"``` <br> **Option - Link Preview**<br>```{"content": "(url + string)", "preview": "true"``` |
-| download        | option: json **(required)** <br> ```{"clientUrl": "", "mimetype": "", "mediaKey": "", "type": ""}```  |
-| chat            | `null`           |
-| unread          | `null`           |
-| stats           | `null`           |
-| state           | `null`           |
-| me              | `null`           |
-| logout          | `null`           |
-| storage         | `null`          |
-
-## Api Examples (CURL)
-<a name="apicurl"></a>
-
-**Start**
-```sh
-curl -X POST \
-  http://localhost:8334/api/mytoken/start \
-  -H 'content-type: application/x-www-form-urlencoded' \
-  -d 'bot=http://localhost:9001/exampleBot.php&webhook=null'
-```
-
-**Send Message**
-```sh
-curl -X POST \
-  http://localhost:8334/api/mytoken/messsage \
-  -H 'content-type: application/x-www-form-urlencoded' \
-  -d 'number=5215512344567&message=HelloWorld'
-```
-
-**Send Media**
-```sh
-curl -X POST \
-  http://localhost:8334/api/mytoken/media \
-  -H 'content-type: application/x-www-form-urlencoded' \
-  -d 'number=5215512344567&option='{"caption":"HelloFile","attachment":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJmZWF0aGVyIGZlYXRoZXItY2lyY2xlIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCI+PC9jaXJjbGU+PC9zdmc+"}''
-```
+* **[Api](#api)**
+  - [Endpoints](#endpoints)
+  - [Examples (CURL)](#apicurl)
+* **[Bot](#bot)**
+  - [Endpoints](#bot)
 
 <a name="start"></a>
 ## Install & Start
@@ -119,6 +72,53 @@ git clone https://github.com/BlakePro/WhatsAppWebApiNodeJS.git
 ```
 
 **NOTE:** I can't guarantee you will not be blocked by using this method, although it has worked for me. WhatsApp does not allow bots or unofficial clients on their platform, so this shouldn't be considered totally safe.
+
+<a name="api"></a>
+## Api
+<a name="endpoints"></a>
+| Endpoint        | Post           |
+| -------------   | -------------  |
+| start           | bot: url <br>  webhook: url  |
+| contact         | number: string |
+| photo           | number: string |
+| seen            | number: string **(required)** |
+| message         | number: string / list <br> message: string / list |
+| media           | number: string **(required)** <br> option: json **(required)** <br><br><br> **Option -  File**<br>```{"caption": "", "attachment": "(base64)"``` <br> **Option - Link Preview**<br>```{"content": "(url + string)", "preview": "true"``` |
+| download        | option: json **(required)** <br> ```{"clientUrl": "", "mimetype": "", "mediaKey": "", "type": ""}```  |
+| chat            | `null`           |
+| unread          | `null`           |
+| stats           | `null`           |
+| state           | `null`           |
+| me              | `null`           |
+| logout          | `null`           |
+| storage         | `null`          |
+
+## Examples (CURL)
+<a name="apicurl"></a>
+
+**Start**
+```sh
+curl -X POST \
+  http://localhost:8334/api/mytoken/start \
+  -H 'content-type: application/x-www-form-urlencoded' \
+  -d 'bot=http://localhost:9001/exampleBot.php&webhook=null'
+```
+
+**Send Message**
+```sh
+curl -X POST \
+  http://localhost:8334/api/mytoken/messsage \
+  -H 'content-type: application/x-www-form-urlencoded' \
+  -d 'number=5215512344567&message=HelloWorld'
+```
+
+**Send Media**
+```sh
+curl -X POST \
+  http://localhost:8334/api/mytoken/media \
+  -H 'content-type: application/x-www-form-urlencoded' \
+  -d 'number=5215512344567&option='{"caption":"HelloFile","attachment":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJmZWF0aGVyIGZlYXRoZXItY2lyY2xlIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCI+PC9jaXJjbGU+PC9zdmc+"}''
+```
 
 ## Disclaimer
 
