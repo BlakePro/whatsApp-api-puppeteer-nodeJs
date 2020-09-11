@@ -1,4 +1,4 @@
-# Unofficial API for WhatsApp + Bot + Webhook
+# Unofficial API for WhatsApp + Bot (BONUS)
 
 ## Table of Contents
 
@@ -13,9 +13,9 @@
   - [Clone GitHub Repo](#clone)
 * **[Api](#api)**
   - [Endpoints](#endpoints)
-  - [Examples (CURL)](#apicurl)
-* **[Bot](#bot)**
-  - [Endpoints](#bot)
+  - [Examples (CURL)](#apiexamples)
+* **[Bot (php)](#bot)**
+  - [Run](#botexample)
 
 <a name="start"></a>
 ## Install & Start
@@ -94,7 +94,7 @@ git clone https://github.com/BlakePro/WhatsAppWebApiNodeJS.git
 | storage         | `null`          |
 
 ## Examples (CURL)
-<a name="apicurl"></a>
+<a name="apiexamples"></a>
 
 **Start**
 ```sh
@@ -119,6 +119,16 @@ curl -X POST \
   -H 'content-type: application/x-www-form-urlencoded' \
   -d 'number=5215512344567&option='{"caption":"HelloFile","attachment":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJmZWF0aGVyIGZlYXRoZXItY2lyY2xlIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCI+PC9jaXJjbGU+PC9zdmc+"}''
 ```
+
+<a name="bot"></a>
+## Bot (php)
+<a name="botexample"></a>
+- **Start Server PHP**
+```sh
+  php -l 0.0.0.0:8334
+```
+- **Set bot URL in start API**(#apiexamples)
+`http://localhost:8334/exampleBot.php`
 
 ## Disclaimer
 
