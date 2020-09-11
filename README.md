@@ -3,6 +3,7 @@
 ## Table of Contents
 * **[Api](#api)**
   - [Endpoints](#endpoints)
+  - [Api Examples (CURL)](#apicurl)
 * **[Bot](#bot)**
   - [Endpoints](#bot)
 * **[Install & Start](#start)**
@@ -25,17 +26,43 @@
 | contact         | number: string |
 | photo           | number: string |
 | seen            | number: string **(required)** |
-| message         | number: **string / list** <br> message: **string / list**  |
-| media           | number: string **(required)** <br> option: json **(required)** <br><br> **File**<br>```{"caption": "", "attachment": "(base64)"``` <br> **Link Preview**<br>```{"content": "(url + string)", "preview": "true"```  <br> |
-| download        | option: json **(required)** <br> ```{"clientUrl": "", "mimetype": "", "mediaKey": "", "type": ""}``` <br>  |
-| chat            |                |
-| unread          |                |
-| stats           |                |
-| state           |                |
-| me              |                |
-| logout          |                |
-| storage         |                |
+| message         | number: string / list <br> message: string / list |
+| media           | number: string **(required)** <br> option: json **(required)** <br><br><br> **Option -  File**<br>```{"caption": "", "attachment": "(base64)"``` <br> **Option - Link Preview**<br>```{"content": "(url + string)", "preview": "true"``` |
+| download        | option: json **(required)** <br> ```{"clientUrl": "", "mimetype": "", "mediaKey": "", "type": ""}```  |
+| chat            | `null`           |
+| unread          | `null`           |
+| stats           | `null`           |
+| state           | `null`           |
+| me              | `null`           |
+| logout          | `null`           |
+| storage         | `null`          |
 
+## Api Examples (CURL)
+<a name="apicurl"></a>
+
+API Start
+```sh
+curl -X POST \
+  http://localhost:8334/api/mytoken/start \
+  -H 'content-type: application/x-www-form-urlencoded' \
+  -d 'bot=http://localhost:9001/exampleBot.php&webhook=null'
+```
+
+API Message
+```sh
+curl -X POST \
+  http://localhost:8334/api/mytoken/media \
+  -H 'content-type: application/x-www-form-urlencoded' \
+  -d 'number=5215512344567&message=HelloWorld'
+```
+
+API Media
+```sh
+curl -X POST \
+  http://localhost:8334/api/mytoken/messsage \
+  -H 'content-type: application/x-www-form-urlencoded' \
+  -d 'number=5215512344567&option={"caption":"HelloFile","attachment":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJmZWF0aGVyIGZlYXRoZXItY2lyY2xlIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCI+PC9jaXJjbGU+PC9zdmc+"}'
+```
 
 <a name="start"></a>
 ## Install & Start
