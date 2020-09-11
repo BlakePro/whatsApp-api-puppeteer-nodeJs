@@ -20,7 +20,7 @@
 ## Api
 <a name="endpoints"></a>
 **Endpoints**
-| ENDPOINT        | POST           |
+| Endpoint        | Post           |
 | -------------   | -------------  |
 | stats           | empty          |
 | state           | empty          |
@@ -30,9 +30,9 @@
 | chat            | empty          |
 | unread          | empty          |
 | seen            | number: string |
-| message         | number: string \n message: string   |
-| media           | number: string \n message: string   |
-| download        | number: string \n message: string   |
+| message         | number: string <br> message: string   |
+| media           | number: string <br> message: string   |
+| download        | number: string <br> message: string   |
 | logout          | empty                               |
 | storage         | empty                               |
 
