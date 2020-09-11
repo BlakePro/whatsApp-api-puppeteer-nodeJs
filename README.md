@@ -30,9 +30,9 @@
 | chat            | empty          |
 | unread          | empty          |
 | seen            | number: string **(requiered)** |
-| message         | number: string / list <br> message: string / list  |
-| media           | number: string <br> message: string   |
-| download        | option: json **(requiered)** <br> ```json  {"clientUrl": "", "mimetype": "", "mediaKey": "", "type": ""}```  |
+| message         | number: **string / list** <br> message: **string / list**  |
+| media           | number: string **(requiered)** <br> option: json **(requiered)** <br> **Media**```{"caption": "", "attachment": "(base64)"``` <br> **Link Preview**```{"content": "(url string)", "preview": "true"```  |
+| download        | option: json **(requiered)** <br> ```{"clientUrl": "", "mimetype": "", "mediaKey": "", "type": ""}```  |
 | logout          | empty                               |
 | storage         | empty                               |
 
