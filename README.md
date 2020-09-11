@@ -21,19 +21,19 @@
 <a name="endpoints"></a>
 | Endpoint        | Post           |
 | -------------   | -------------  |
-| stats           | empty          |
-| state           | empty          |
-| me              | empty          |
+| stats           |                |
+| state           |                |
+| me              |                |
 | contact         | number: string |
 | photo           | number: string |
-| chat            | empty          |
-| unread          | empty          |
+| chat            |                |
+| unread          |                |
 | seen            | number: string **(required)** |
 | message         | number: **string / list** <br> message: **string / list**  |
-| media           | number: string **(required)** <br> option: json **(required)** <br><br> **Media**<br>```{"caption": "", "attachment": "(base64)"``` <br> **Link Preview**<br>```{"content": "(url + string)", "preview": "true"```  |
-| download        | option: json **(required)** <br> ```{"clientUrl": "", "mimetype": "", "mediaKey": "", "type": ""}```  |
-| logout          | empty                               |
-| storage         | empty                               |
+| media           | number: string **(required)** <br> option: json **(required)** <br><br> **File**<br>```{"caption": "", "attachment": "(base64)"``` <br> **Link Preview**<br>```{"content": "(url + string)", "preview": "true"```  <br> |
+| download        | option: json **(required)** <br> ```{"clientUrl": "", "mimetype": "", "mediaKey": "", "type": ""}``` <br>  |
+| logout          |                |
+| storage         |                |
 
 
 <a name="start"></a>
