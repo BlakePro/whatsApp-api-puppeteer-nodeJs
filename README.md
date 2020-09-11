@@ -1,4 +1,12 @@
-# Unofficial API for WhatsApp + Bot (BONUS)
+<br>
+<p align="center">
+  <a href="https://github.com/BlakePro/WhatsAppApiNodeJS">
+    <img src="Api_WhatsApp_Bot.png" alt="Api WhatsApp Bot Unofficial" width="120" height="120">
+  </a>
+  <h3 align="center">Unofficial API for WhatsApp + Bot</h3>
+</p>
+
+# Unofficial API for WhatsApp + Bot
 
 ## Table of Contents
 
@@ -14,7 +22,7 @@
 * **[Api](#api)**
   - [Endpoints](#endpoints)
   - [Examples (CURL)](#apiexamples)
-* **[Bot (php)](#bot)**
+* **[Bot](#bot)**
   - [Run](#botexample)
 
 <a name="start"></a>
@@ -127,8 +135,10 @@ curl -X POST \
 ```sh
   php -l 0.0.0.0:8334
 ```
-- **Set bot URL in start API**(#apiexamples)
-`http://localhost:8334/exampleBot.php`
+- **Set bot URL in start API**
+```
+  http://localhost:8334/exampleBot.php
+```
 
 ## Disclaimer
 
