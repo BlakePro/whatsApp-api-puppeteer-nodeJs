@@ -29,10 +29,10 @@
 | photo           | number: string |
 | chat            | empty          |
 | unread          | empty          |
-| seen            | number: string |
-| message         | number: string <br> message: string   |
+| seen            | number: string **(requiered)** |
+| message         | number: string / list <br> message: string / list  |
 | media           | number: string <br> message: string   |
-| download        | number: string <br> message: string   |
+| download        | option: json **(requiered)** <br> ```json  {"clientUrl": "", "mimetype": "", "mediaKey": "", "type": ""}```  |
 | logout          | empty                               |
 | storage         | empty                               |
 
