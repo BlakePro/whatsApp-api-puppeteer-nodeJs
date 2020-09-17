@@ -84,7 +84,7 @@ git clone https://github.com/BlakePro/WhatsAppWebApiNodeJS.git
 | -------------   | -------------  |
 | start           | bot: url <br>  webhook: url  |
 | contact         | number: string |
-| photo           | number: string |
+| picture           | number: string |
 | seen            | number: string **(required)** |
 | message         | number: string / list <br> message: string / list |
 | media           | number: string **(required)** <br> option: json **(required)** <br><br><br> **Option -  File**<br>```{"caption": "", "attachment": "(base64)"``` <br> **Option - Link Preview**<br>```{"content": "(url + string)", "preview": "true"``` |

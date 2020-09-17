@@ -3,7 +3,7 @@ $data = file_get_contents('php://input');
 $response = [];
 if($data != ''){
 
-  $path_file = 'media/';
+  $path_file = 'mediaBot/';
 
   //FROM WHATSAPP API
   $array = json_decode($data, TRUE);
@@ -41,6 +41,7 @@ if($data != ''){
     */
 
     //EXAMPLE SEND | FILE (PDF, JPG, PNG, DOCX, STICKER/WEBP)
+    /*
       $array_file = ['jpgFile.jpg', 'pdfFile.pdf', 'pngFile.png', 'wordFile.docx', 'stickerFile.webp'];
       $file = $path_file.$array_file[0];
       $file_mimetype = mime_content_type($file);
@@ -52,13 +53,14 @@ if($data != ''){
       ];
       $type_response = 'media';
       $message = json_encode($args, TRUE);
+    */
 
 
     //EXAMPLE SEND | SINGLE MESSAGE
-    /*
-      $message = $caption,;
+
+      $message = $caption;
       $type_response = 'message';
-    */
+  
 
     //EXAMPLE SEND | MULTIPLE MESSAGE
     /*
