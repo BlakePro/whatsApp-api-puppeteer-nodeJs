@@ -107,7 +107,7 @@ class PuppeteerWhatsApp extends EventEmitter {
       }
 
       if(APP_LINUX){
-        browser_args.push('/usr/bin/chromium-browser')
+        browser_args.executablePath = '/usr/bin/chromium-browser'
       }
 
       // NEW PUPPETEER
