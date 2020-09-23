@@ -99,7 +99,7 @@ class PuppeteerWhatsApp extends EventEmitter {
       }
       //console.log(puppeteer_args);
 
-      const browser_args {
+      const browser_args = {
         headless: APP_HEADLESS,
         ignoreHTTPSErrors: true,
         defaultViewport: null,
