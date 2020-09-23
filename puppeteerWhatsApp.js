@@ -25,10 +25,15 @@ if(typeof argv[2] === 'undefined')var debug = 'true';
 else var debug = (argv[2]).replace('DEBUG=', '');
 var debug = debug == 'true' ? true : false;
 
+if(typeof argv[3] === 'undefined')var linux = 'false';
+else var linux = (argv[3]).replace('LINUX=', '');
+var linux = linux == 'true' ? true : false;
+
 // DEFINE CONST WHATSAPP WEB
 const APP_HEADLESS = headless
 const APP_HOST = '0.0.0.0'
-const APP_PORT = port;
+const APP_PORT = port
+const APP_LINUX = linux
 const APP_SERVER = 'http://localhost:' + APP_PORT
 const APP_API_DIR = '/'
 const APP_API_PATH = 'api'
@@ -94,13 +99,19 @@ class PuppeteerWhatsApp extends EventEmitter {
       }
       //console.log(puppeteer_args);
 
-      // NEW PUPPETEER
-      const browser = await puppeteer.launch({
+      const browser_args {
         headless: APP_HEADLESS,
         ignoreHTTPSErrors: true,
         defaultViewport: null,
         args: puppeteer_args
-      })
+      };
+
+      if(APP_LINUX){
+        browser_args.push('/usr/bin/chromium-browser');
+      }
+
+      // NEW PUPPETEER
+      const browser = await puppeteer.launch(browser_args)
       this.browser = browser
 
       // CREATE PUPPETEER INCOGNITO
@@ -289,9 +300,11 @@ class PuppeteerWhatsApp extends EventEmitter {
           this.sendToBot(message, this)
         })
 
+        /*
         await page.exposeFunction('onAddMessageUndefined', (message) => {
           this.sendToWebhookTo(message, this)
         })
+        */
 
         // ON STATE CHANGE
         await page.exposeFunction('onAppStateChangedEvent', (state) => {
@@ -346,7 +359,7 @@ class PuppeteerWhatsApp extends EventEmitter {
               if(message.id.remote != 'status@broadcast'){
                 message.apiToken = token
                 if (typeof message.type === 'undefined' || typeof message.isNewMsg === 'undefined' || message.isNewMsg == false || message.broadcast == true || message.id.fromMe == true){
-                  onAddMessageUndefined(message)
+                  //onAddMessageUndefined(message)
                 }else{
                   onAddMessage(message)
                 }
