@@ -433,9 +433,8 @@ class PuppeteerWhatsApp extends EventEmitter {
                 if(message.id.fromMe == true)var typeMessage = 'FromMe'
                 else var typeMessage = 'ToMe'
                 message.typeMessage = typeMessage
-                WhatsApp.sendToWebhook(typeMessage, message, data_token)
+                //WhatsApp.sendToWebhook(typeMessage, message, data_token)
 
-                /*
                 try{
                   new Promise((resolve, reject) => {
                     var number = message.from;
@@ -455,7 +454,7 @@ class PuppeteerWhatsApp extends EventEmitter {
                 }catch(e){
                   WhatsApp.sendToWebhook(typeMessage, message, data_token)
                 }
-                */
+
                 return
               }
             }
