@@ -9,22 +9,25 @@ const yaqrcode = require('yaqrcode')
 const fetch = require('node-fetch')
 const qrcode_terminal = require('qrcode-terminal')
 const moment = require('moment');
+const path = require('path')
+const userDataDir = path.dirname(__filename) + '/data';
+const argv = process.argv.slice(2);
 
 // DEFINE PORT WEBSERVICE
-const argv = process.argv.slice(2);
-console.log(argv);
-
 if(typeof argv[0] === 'undefined')var port = 8333;
 else var port = parseInt((argv[0]).replace('PORT=', ''));
 
+// DEFINE HEADLESS PUPPETEER
 if(typeof argv[1] === 'undefined')var headless = 'true';
 else var headless = (argv[1]).replace('HEADLESS=', '');
 var headless = headless == 'true' ? true : false;
 
+// DEFINE DEBUG
 if(typeof argv[2] === 'undefined')var debug = 'true';
 else var debug = (argv[2]).replace('DEBUG=', '');
 var debug = debug == 'true' ? true : false;
 
+// DEFINE LINUX SERVER
 if(typeof argv[3] === 'undefined')var linux = 'false';
 else var linux = (argv[3]).replace('LINUX=', '');
 var linux = linux == 'true' ? true : false;
@@ -44,7 +47,9 @@ const APP_LANGUAGE = 'en'
 const APP_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36'
 const APP_DEBUG = debug
 
-// PUPPETEER WHATSAPP CLASS
+if(APP_DEBUG)console.log(argv);
+
+// PUPPETEER EMITTER
 class PuppeteerWhatsApp extends EventEmitter {
   constructor () {
     super()
@@ -103,8 +108,10 @@ class PuppeteerWhatsApp extends EventEmitter {
         headless: APP_HEADLESS,
         ignoreHTTPSErrors: true,
         defaultViewport: null,
-        args: puppeteer_args
+        args: puppeteer_args,
+        userDataDir: userDataDir
       }
+      //console.log(userDataDir);
 
       if(APP_LINUX){
         browser_args.executablePath = '/usr/bin/chromium-browser'
@@ -322,16 +329,16 @@ class PuppeteerWhatsApp extends EventEmitter {
         })
 
         // ON NEW MESSAGE TO ME
-        await page.exposeFunction('onAddMessageToMe', (message) => {
+        await page.exposeFunction('onAddMessageToMe', (message, typeMessage) => {
           this.sendToBot(message, this)
           this.sendToWebhookTo(message, this)
-          this.sendToSocket(message, this, "ToMe")
+          this.sendToSocket(message, this, typeMessage)
         })
 
         // ON NEW MESSAGE FROM ME
-        await page.exposeFunction('onAddMessageFromMe', (message) => {
+        await page.exposeFunction('onAddMessageFromMe', (message, typeMessage) => {
           this.sendToWebhookTo(message, this)
-          this.sendToSocket(message, this, "FromMe")
+          this.sendToSocket(message, this, typeMessage)
         })
 
         // ON STATE CHANGE
@@ -376,7 +383,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         // ADD MESSAGES EVENT
         console.log('READING MESSAGES')
 
-        await page.evaluate((token) => {
+        await page.evaluate((token, APP_DEBUG) => {
           setTimeout(() => {
             window.Store.AppState.on('change:state', (_AppState, state) => { window.onAppStateChangedEvent(state); });
             // EMMITER EVENT APP STATE
@@ -389,14 +396,25 @@ class PuppeteerWhatsApp extends EventEmitter {
                 if (typeof message.type === 'undefined' || typeof message.isNewMsg === 'undefined' || message.isNewMsg == false ||message.broadcast == true){
                   return
                 }else{
-                  if(message.id.fromMe == true)onAddMessageFromMe(message)
-                  else onAddMessageToMe(message)
+                  if(message.id.fromMe == true){
+                    var typeMessage = 'FromMe';
+                    message.typeMessage = typeMessage
+                    onAddMessageFromMe(message, typeMessage)
+                  }
+                  else{
+                    var typeMessage = 'ToMe';
+                    message.typeMessage = typeMessage
+                    onAddMessageToMe(message, typeMessage)
+                  }
+                  if(APP_DEBUG){
+                    console.log(message)
+                  }
                 }
               }
               return
             })
           }, 4500)
-        }, token)
+        }, token, APP_DEBUG)
 
         var end_time = (Date.now() - time_start) / 1000
         var value = 'READY ' + token + ' IN ' + end_time + ' SEC.'
@@ -420,7 +438,7 @@ class PuppeteerWhatsApp extends EventEmitter {
     try {
       new Promise((resolve, reject) => {
         if (typeof message === 'object' && typeof message.apiToken !== 'undefined' && typeof message.from !== 'undefined') {
-          if(APP_DEBUG)console.log(message);
+          //if(APP_DEBUG)console.log(message);
 
           const token = message.apiToken
           if(token != ''){
@@ -430,11 +448,7 @@ class PuppeteerWhatsApp extends EventEmitter {
               console.log({ response: 'Not defined token', status: false })
             }else{
               if(typeof message.id !== 'undefined' && typeof message.id.fromMe !== 'undefined'){
-                if(message.id.fromMe == true)var typeMessage = 'FromMe'
-                else var typeMessage = 'ToMe'
-                message.typeMessage = typeMessage
                 //WhatsApp.sendToWebhook(typeMessage, message, data_token)
-
                 try{
                   new Promise((resolve, reject) => {
                     var number = message.from;
@@ -445,7 +459,7 @@ class PuppeteerWhatsApp extends EventEmitter {
                           WhatsApp.getProfilePicThumb(page, number).then(picture => {
                             message.picture = picture
                             message.contact = contact
-                            WhatsApp.sendToWebhook(typeMessage, message, data_token)
+                            WhatsApp.sendToWebhook(message.typeMessage, message, data_token)
                           })
                         })
                       }
@@ -473,7 +487,7 @@ class PuppeteerWhatsApp extends EventEmitter {
     try {
       new Promise((resolve, reject) => {
         if (typeof message === 'object' && typeof message.apiToken !== 'undefined' && typeof message.from !== 'undefined') {
-          if(APP_DEBUG)console.log(message);
+          //if(APP_DEBUG)console.log(message);
 
           const token = message.apiToken
           const WhatsAppDB = WhatsApp.getDatabaseToken()
@@ -506,7 +520,7 @@ class PuppeteerWhatsApp extends EventEmitter {
 
       new Promise((resolve, reject) => {
         if (typeof message === 'object' && typeof message.apiToken !== 'undefined' && typeof message.from !== 'undefined') {
-          if(APP_DEBUG)console.log(message);
+          //if(APP_DEBUG)console.log(message);
 
           const token = message.apiToken
           const WhatsAppDB = WhatsApp.getDatabaseToken()
