@@ -11,6 +11,7 @@ const qrcode_terminal = require('qrcode-terminal')
 const moment = require('moment');
 const path = require('path')
 const userDataDir = path.dirname(__filename) + '/data';
+console.log(userDataDir)
 const argv = process.argv.slice(2);
 
 // DEFINE PORT WEBSERVICE
