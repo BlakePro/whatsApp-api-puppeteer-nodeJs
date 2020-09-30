@@ -449,13 +449,13 @@ class PuppeteerWhatsApp extends EventEmitter {
               console.log({ response: 'Not defined token', status: false })
             }else{
               if(typeof message.id !== 'undefined' && typeof message.id.fromMe !== 'undefined'){
-                //WhatsApp.sendToWebhook(typeMessage, message, data_token)
                 try{
                   new Promise((resolve, reject) => {
-                    var number = message.from;
                     WhatsApp.getWebSocketPage(data_token.endpoint).then(json_page => {
                       if (typeof json_page === 'object' && typeof json_page.page !== 'undefined' && json_page.page != null) {
                         var page = json_page.page
+                        if(message.id.fromMe)var number = message.to;
+                        else var number = message.from;
                         WhatsApp.getContact(page, number).then(contact => {
                           WhatsApp.getProfilePicThumb(page, number).then(picture => {
                             message.picture = picture
