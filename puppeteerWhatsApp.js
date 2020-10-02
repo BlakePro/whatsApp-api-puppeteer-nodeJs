@@ -11,7 +11,6 @@ const qrcode_terminal = require('qrcode-terminal')
 const moment = require('moment');
 const path = require('path')
 const userDataDir = path.dirname(__filename) + '/data';
-console.log(userDataDir)
 const argv = process.argv.slice(2);
 
 // DEFINE PORT WEBSERVICE
@@ -101,7 +100,9 @@ class PuppeteerWhatsApp extends EventEmitter {
         puppeteer_args.push('--unlimited-storage');
         puppeteer_args.push('--force-gpu-mem-available-mb');
       }else{
-        puppeteer_args.push('--auto-open-devtools-for-tabs');
+        if(APP_DEBUG){
+          puppeteer_args.push('--auto-open-devtools-for-tabs');
+        }
       }
       //console.log(puppeteer_args);
 
@@ -560,33 +561,42 @@ class PuppeteerWhatsApp extends EventEmitter {
                     var from = message.from
                     message.token = token;
 
-                    //SEND TO BOT
-                    var send = {
-                      method: 'post',
-                      body: JSON.stringify(message),
-                      headers: { 'Content-Type': 'application/json' }
-                    }
+                    if(message.id.fromMe)var number = message.to;
+                    else var number = message.from;
 
-                    //BOT RESPONSE
-                    try{
-                      fetch(bot, send).then(res => res.json()).then(response => {
-                        if (typeof response === 'object' && response.status == true && typeof response.type !== 'undefined') {
-                          if(APP_DEBUG)console.log(response)
+                    WhatsApp.getContact(page, number).then(contact => {
+                      WhatsApp.getProfilePicThumb(page, number).then(picture => {
+                        message.picture = picture
+                        message.contact = contact
 
-                          var typeMessageBot = response.type
-                          if (typeof response.message !== 'undefined' && response.message != ''){
-                            var responseMessage = response.message
-
-                            if(typeMessageBot == 'message')WhatsApp.sendMessage(page, from, responseMessage)
-                            else if(typeMessageBot == 'media')WhatsApp.sendMedia(page, from, responseMessage)
-
-                            WhatsApp.sendToWebhook('to', responseMessage, data_token)
-                          }
+                        //SEND TO BOT
+                        var send = {
+                          method: 'post',
+                          body: JSON.stringify(message),
+                          headers: { 'Content-Type': 'application/json' }
                         }
-                      })
-                    } catch (e) { if (APP_DEBUG)console.log(e) }
-                    //BOT RESPONSE
 
+                        //BOT RESPONSE
+                        try{
+                          fetch(bot, send).then(res => res.json()).then(response => {
+                            if (typeof response === 'object' && response.status == true && typeof response.type !== 'undefined') {
+                              if(APP_DEBUG)console.log(response)
+
+                              var typeMessageBot = response.type
+                              if (typeof response.message !== 'undefined' && response.message != ''){
+                                var responseMessage = response.message
+
+                                if(typeMessageBot == 'message')WhatsApp.sendMessage(page, from, responseMessage)
+                                else if(typeMessageBot == 'media')WhatsApp.sendMedia(page, from, responseMessage)
+
+                                WhatsApp.sendToWebhook('to', responseMessage, data_token)
+                              }
+                            }
+                          })
+                        } catch (e) { if (APP_DEBUG)console.log(e) }
+                        //BOT RESPONSE
+                      })
+                    })
                   }
                 })
               }
@@ -758,23 +768,24 @@ class PuppeteerWhatsApp extends EventEmitter {
             const get_id = window.Store.Chat.get(id)
             if (typeof get_id.id !== 'undefined' && typeof get_id.id.server !== 'undefined' && get_id.id.server == 'c.us') {
 
-              window.App.sendSeen(id)
               const number = id.replace(/\D+/g, '')
               const replaceNumber = (message, number) => message.replace(/{number}/g, number)
+              window.App.sendSeen(id)
 
               if (typeof message === 'string' && message != '') {
                 var message = replaceNumber(message, number)
                 window.App.sendMessage(get_id, message)
-                return { number: number, message: message, status_code: 200 }
+
               } else if (Array.isArray(message) && message.length > 0) {
                 message.forEach((data_message) => {
                   if (typeof data_message === 'string' && data_message != '') {
                     var message = replaceNumber(data_message, number)
                     window.App.sendMessage(get_id, data_message)
-                    return { number: number, message: data_message, status_code: 200 }
                   }
                 })
               }
+              return { number: number, message: message, status_code: 200 }
+
             } else return { number: null, message: 'NaN', status_code: 404 }
           } else return { number: null, message: 'NaN', status_code: 404 }
         } catch (e) {
@@ -783,7 +794,7 @@ class PuppeteerWhatsApp extends EventEmitter {
       }, message, id)
     } catch (e) {
       this.getLog('setMessage', e)
-      return { number: null, message: 'Close', status_code: 501 }
+      return { number: null, message: 'Close', contact: {}, status_code: 501 }
     }
   }
 
@@ -816,8 +827,12 @@ class PuppeteerWhatsApp extends EventEmitter {
   async getProfilePicThumb(page, id){
     try {
       return await page.evaluate((id) => {
-        if (typeof id === 'undefined' || id == '') return window.Store.ProfilePicThumb.serialize()
-        else return window.Store.ProfilePicThumb.get(id).serialize()
+        try{
+          if (typeof id === 'undefined' || id == '') return window.Store.ProfilePicThumb.serialize()
+          else return window.Store.ProfilePicThumb.get(id).serialize()
+        }catch (e) {
+          return {}
+        }
       }, id)
     } catch (e) {
       this.getLog('getProfilePicThumb', e)
@@ -960,13 +975,15 @@ class PuppeteerWhatsApp extends EventEmitter {
   }
 
   async sendMessage(page, id, message){
+    var time = 1097
     try {
       if(typeof id === 'string' && id != ''){
-        return this.setMessage(page, id, message)
+        setTimeout(() => {
+          return this.setMessage(page, id, message)
+        }, time)
       }else if (typeof id === 'object' && id.length > 0){
         var no_ids = id.length
         var to_time = this.getTimeToSend(no_ids)
-        var time = 1097
         id.forEach((from) => {
           setTimeout(() => {
             new Promise((resolve, reject) => {
@@ -1127,8 +1144,8 @@ class PuppeteerWhatsApp extends EventEmitter {
               const action = (req.params.action).toLowerCase().trim()
 
               if(APP_DEBUG){
-                console.log('token -> ' + token)
-                console.log('action -> ' + action)
+                console.log('TOKEN NAME: ' + token)
+                console.log('ACTION: ' + action)
               }
 
               if (token == '')res.json({ response: 'Not allowed empty token', status_code: 401 })

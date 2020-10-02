@@ -3,7 +3,7 @@
     <img src="mediaBot/Api_WhatsApp_Bot.png" alt="Api WhatsApp Bot Unofficial" width="140" height="140">
   </a>
   <h1 align="center">Unofficial API for WhatsApp</h1>
-  <h1 align="center">(Bot + Webhook + Socket)</h1>
+  <h4 align="center">(Bot / Webhook / Socket)</h4>
 </p>
 
 ## Table of Contents
@@ -111,7 +111,7 @@ git clone https://github.com/BlakePro/WhatsAppWebApiNodeJS.git
 curl -X POST \
   http://localhost:8333/api/mytoken/start \
   -H 'content-type: application/x-www-form-urlencoded' \
-  -d 'bot=http://localhost:9001/exampleBot.php&webhook=null'
+  -d 'bot=http://localhost:9001/exampleBot.php&webhook=null&socket=null'
 ```
 
 **Send Message**
@@ -143,4 +143,4 @@ curl -X POST \
 
 ## Disclaimer
 
-This project is not affiliated, associated, authorized, endorsed by, or in any way officially connected with WhatsApp or any of its subsidiaries or its affiliates. The official WhatsApp website can be found at https://whatsapp.com. "WhatsApp" as well as related names, marks, emblems and images are registered trademarks of their respective owners.
+This project is not affiliated, associated, authorized, endorsed by, or in any way officially connected with WhatsApp or any of its subsidiaries or its affiliates. The official WhatsApp website can be found at https://whatsapp.com "WhatsApp" as well as related names, marks, emblems and images are registered trademarks of their respective owners.
