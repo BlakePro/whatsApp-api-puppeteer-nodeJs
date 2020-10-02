@@ -3,7 +3,7 @@
     <img src="mediaBot/Api_WhatsApp_Bot.png" alt="Api WhatsApp Bot Unofficial" width="140" height="140">
   </a>
   <h1 align="center">Unofficial API for WhatsApp</h1>
-  <h4 align="center">(Bot / Webhook / Socket)</h4>
+  <h3 align="center">(Bot / Webhook / Socket)</h3>
 </p>
 
 ## Table of Contents
