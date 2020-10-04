@@ -32,6 +32,11 @@ if(typeof argv[3] === 'undefined')var linux = 'false';
 else var linux = (argv[3]).replace('LINUX=', '');
 var linux = linux == 'true' ? true : false;
 
+// DEFINE SIMPLE MESSAGE
+if(typeof argv[4] === 'undefined')var addmessage = 'false';
+else var addmessage = (argv[4]).replace('ONMESSAGE=', '');
+var addmessage = addmessage == 'true' ? true : false;
+
 // DEFINE CONST WHATSAPP WEB
 const APP_HEADLESS = headless
 const APP_HOST = '0.0.0.0'
@@ -46,6 +51,7 @@ const APP_QR_VALUE_SELECTOR = '[data-ref]'
 const APP_LANGUAGE = 'en'
 const APP_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36'
 const APP_DEBUG = debug
+const APP_ONMESSAGE = addmessage
 
 if(APP_DEBUG)console.log(argv);
 
@@ -249,7 +255,7 @@ class PuppeteerWhatsApp extends EventEmitter {
       }
 
       // EVALUATE INJECTED TOKEN SESSION
-      const is_token = await page.waitForSelector(APP_KEEP_PHONE_CONNECTED_SELECTOR, { timeout: 42000 }).then(res => {
+      const is_token = await page.waitForSelector(APP_KEEP_PHONE_CONNECTED_SELECTOR, { timeout: 70000 }).then(res => {
         console.log('VALID TOKEN')
         return true
       }).catch(e => {
@@ -331,17 +337,19 @@ class PuppeteerWhatsApp extends EventEmitter {
         })
 
         // ON NEW MESSAGE TO ME
-        await page.exposeFunction('onAddMessageToMe', (message, typeMessage) => {
-          this.sendToBot(message, this)
-          this.sendToWebhookTo(message, this)
-          this.sendToSocket(message, this, typeMessage)
-        })
+        if(APP_ONMESSAGE){
+          await page.exposeFunction('onAddMessageToMe', (message, typeMessage) => {
+            this.sendToBot(message, this)
+            this.sendToWebhookTo(message, this)
+            this.sendToSocket(message, this, typeMessage)
+          })
 
-        // ON NEW MESSAGE FROM ME
-        await page.exposeFunction('onAddMessageFromMe', (message, typeMessage) => {
-          this.sendToWebhookTo(message, this)
-          this.sendToSocket(message, this, typeMessage)
-        })
+          // ON NEW MESSAGE FROM ME
+          await page.exposeFunction('onAddMessageFromMe', (message, typeMessage) => {
+            this.sendToWebhookTo(message, this)
+            this.sendToSocket(message, this, typeMessage)
+          })
+        }
 
         // ON STATE CHANGE
         await page.exposeFunction('onAppStateChangedEvent', (state) => {
@@ -385,38 +393,40 @@ class PuppeteerWhatsApp extends EventEmitter {
         // ADD MESSAGES EVENT
         console.log('READING MESSAGES')
 
-        await page.evaluate((token, APP_DEBUG) => {
+        await page.evaluate((token, APP_DEBUG, APP_ONMESSAGE) => {
           setTimeout(() => {
             window.Store.AppState.on('change:state', (_AppState, state) => { window.onAppStateChangedEvent(state); });
             // EMMITER EVENT APP STATE
             window.Store.AppState.on('change', () => onChangeState())
             // EMMITER EVENTS MESSAGES ADD
-            window.Store.Msg.on('add', (new_message) => {
-              const message = new_message.serialize()
-              if(message.id.remote != 'status@broadcast'){
-                message.apiToken = token
-                if (typeof message.type === 'undefined' || typeof message.isNewMsg === 'undefined' || message.isNewMsg == false ||message.broadcast == true){
-                  return
-                }else{
-                  if(message.id.fromMe == true){
-                    var typeMessage = 'FromMe';
-                    message.typeMessage = typeMessage
-                    onAddMessageFromMe(message, typeMessage)
-                  }
-                  else{
-                    var typeMessage = 'ToMe';
-                    message.typeMessage = typeMessage
-                    onAddMessageToMe(message, typeMessage)
-                  }
-                  if(APP_DEBUG){
-                    console.log(message)
+            if(APP_ONMESSAGE){
+              window.Store.Msg.on('add', (new_message) => {
+                const message = new_message.serialize()
+                if(message.id.remote != 'status@broadcast'){
+                  message.apiToken = token
+                  if (typeof message.type === 'undefined' || typeof message.isNewMsg === 'undefined' || message.isNewMsg == false ||message.broadcast == true){
+                    return
+                  }else{
+                    if(message.id.fromMe == true){
+                      var typeMessage = 'FromMe';
+                      message.typeMessage = typeMessage
+                      onAddMessageFromMe(message, typeMessage)
+                    }
+                    else{
+                      var typeMessage = 'ToMe';
+                      message.typeMessage = typeMessage
+                      onAddMessageToMe(message, typeMessage)
+                    }
+                    if(APP_DEBUG){
+                      console.log(message)
+                    }
                   }
                 }
-              }
-              return
-            })
+                return
+              })
+            }
           }, 4500)
-        }, token, APP_DEBUG)
+        }, token, APP_DEBUG, APP_ONMESSAGE)
 
         var end_time = (Date.now() - time_start) / 1000
         var value = 'READY ' + token + ' IN ' + end_time + ' SEC.'

@@ -33,12 +33,12 @@ sudo npm i
 
 **Run WebService**
 ```sh
-npm test PORT=8333 HEADLESS=true DEBUG=true LINUX=false
+npm test PORT=8333 HEADLESS=true DEBUG=true LINUX=false ONMESSAGE=true
 ```
 
 **Run WebService (background mode)**
 ```sh
-npm start PORT=8333 HEADLESS=true DEBUG=true LINUX=false &
+npm start PORT=8333 HEADLESS=true DEBUG=true LINUX=false ONMESSAGE=true &
 ```
 
 **Stop WebService (background mode)**
@@ -111,7 +111,7 @@ git clone https://github.com/BlakePro/WhatsAppWebApiNodeJS.git
 curl -X POST \
   http://localhost:8333/api/mytoken/start \
   -H 'content-type: application/x-www-form-urlencoded' \
-  -d 'bot=http://localhost:9001/exampleBot.php&webhook=null&socket=null'
+  -d 'bot=http://localhost:8334/exampleBot.php&webhook=null&socket=null'
 ```
 
 **Send Message**
@@ -127,18 +127,18 @@ curl -X POST \
 curl -X POST \
   http://localhost:8333/api/mytoken/media \
   -H 'content-type: application/x-www-form-urlencoded' \
-  -d 'number=5215512344567&option='{"caption":"HelloFile","attachment":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJmZWF0aGVyIGZlYXRoZXItY2lyY2xlIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCI+PC9jaXJjbGU+PC9zdmc+"}''
+  -d 'number=5215512345678&option='{"caption":"HelloFile","attachment":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJmZWF0aGVyIGZlYXRoZXItY2lyY2xlIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCI+PC9jaXJjbGU+PC9zdmc+"}''
 ```
 
 <a name="bot"></a>
 ## Bot (php)
 - **Start Server PHP**
 ```sh
-  php -l 0.0.0.0:8333
+  php -l 0.0.0.0:8334
 ```
 - **Set bot URL in start API**
 ```
-  http://localhost:8333/exampleBot.php
+  http://localhost:8334/exampleBot.php
 ```
 
 ## Disclaimer
