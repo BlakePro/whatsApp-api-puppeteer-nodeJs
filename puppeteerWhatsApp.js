@@ -10,6 +10,7 @@ const fetch = require('node-fetch')
 const qrcode_terminal = require('qrcode-terminal')
 const moment = require('moment');
 const path = require('path')
+const fs = require('fs');
 const userDataDir = path.dirname(__filename) + '/data';
 const argv = process.argv.slice(2);
 
@@ -18,7 +19,7 @@ if(typeof argv[0] === 'undefined')var port = 8333;
 else var port = parseInt((argv[0]).replace('PORT=', ''));
 
 // DEFINE HEADLESS PUPPETEER
-if(typeof argv[1] === 'undefined')var headless = 'true';
+if(typeof argv[1] === 'undefined')var headless = 'false';
 else var headless = (argv[1]).replace('HEADLESS=', '');
 var headless = headless == 'true' ? true : false;
 
@@ -27,21 +28,17 @@ if(typeof argv[2] === 'undefined')var debug = 'true';
 else var debug = (argv[2]).replace('DEBUG=', '');
 var debug = debug == 'true' ? true : false;
 
-// DEFINE LINUX SERVER
-if(typeof argv[3] === 'undefined')var linux = 'false';
-else var linux = (argv[3]).replace('LINUX=', '');
-var linux = linux == 'true' ? true : false;
-
 // DEFINE SIMPLE MESSAGE
-if(typeof argv[4] === 'undefined')var addmessage = 'false';
-else var addmessage = (argv[4]).replace('ONMESSAGE=', '');
+if(typeof argv[3] === 'undefined')var addmessage = 'true';
+else var addmessage = (argv[3]).replace('MESSAGE=', '');
 var addmessage = addmessage == 'true' ? true : false;
+
+console.log({port: port, headless: headless, debug: debug, message: addmessage})
 
 // DEFINE CONST WHATSAPP WEB
 const APP_HEADLESS = headless
 const APP_HOST = '0.0.0.0'
 const APP_PORT = port
-const APP_LINUX = linux
 const APP_SERVER = 'http://localhost:' + APP_PORT
 const APP_API_DIR = '/'
 const APP_API_PATH = 'api'
@@ -50,10 +47,9 @@ const APP_KEEP_PHONE_CONNECTED_SELECTOR = '[data-tab]'
 const APP_QR_VALUE_SELECTOR = '[data-ref]'
 const APP_LANGUAGE = 'en'
 const APP_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36'
+const APP_LINUX = '/usr/bin/chromium-browser'
 const APP_DEBUG = debug
-const APP_ONMESSAGE = addmessage
-
-if(APP_DEBUG)console.log(argv);
+const APP_MESSAGE = addmessage
 
 // PUPPETEER EMITTER
 class PuppeteerWhatsApp extends EventEmitter {
@@ -99,16 +95,13 @@ class PuppeteerWhatsApp extends EventEmitter {
         '--disable-default-apps',
         '--enable-features=NetworkService',
         '--no-first-run',
-        '--no-zygote'
+        '--no-zygote',
+        '--unlimited-storage'
       ];
 
-      if(APP_HEADLESS){
-        puppeteer_args.push('--unlimited-storage');
-        puppeteer_args.push('--force-gpu-mem-available-mb');
-      }else{
-        if(APP_DEBUG){
-          puppeteer_args.push('--auto-open-devtools-for-tabs');
-        }
+      if(APP_HEADLESS)puppeteer_args.push('--force-gpu-mem-available-mb');
+      else{
+        if(APP_DEBUG)puppeteer_args.push('--auto-open-devtools-for-tabs');
       }
       //console.log(puppeteer_args);
 
@@ -121,9 +114,8 @@ class PuppeteerWhatsApp extends EventEmitter {
       }
       //console.log(userDataDir);
 
-      if(APP_LINUX){
-        browser_args.executablePath = '/usr/bin/chromium-browser'
-      }
+      //LINUX CHROMIUM PATH
+      if(fs.existsSync(APP_LINUX))browser_args.executablePath = APP_LINUX
 
       // NEW PUPPETEER
       const browser = await puppeteer.launch(browser_args)
@@ -336,18 +328,22 @@ class PuppeteerWhatsApp extends EventEmitter {
           }
         })
 
-        // ON NEW MESSAGE TO ME
-        if(APP_ONMESSAGE){
+        if(APP_MESSAGE){
+          // ON NEW MESSAGE TO ME
           await page.exposeFunction('onAddMessageToMe', (message, typeMessage) => {
-            this.sendToBot(message, this)
-            this.sendToWebhookTo(message, this)
-            this.sendToSocket(message, this, typeMessage)
+            new Promise((resolve, reject) => {
+              this.sendToBot(message, this)
+              this.sendToWebhookTo(message, this)
+              this.sendToSocket(message, this, typeMessage)
+            })
           })
 
           // ON NEW MESSAGE FROM ME
           await page.exposeFunction('onAddMessageFromMe', (message, typeMessage) => {
-            this.sendToWebhookTo(message, this)
-            this.sendToSocket(message, this, typeMessage)
+            new Promise((resolve, reject) => {
+              this.sendToWebhookTo(message, this)
+              this.sendToSocket(message, this, typeMessage)
+            })
           })
         }
 
@@ -393,13 +389,13 @@ class PuppeteerWhatsApp extends EventEmitter {
         // ADD MESSAGES EVENT
         console.log('READING MESSAGES')
 
-        await page.evaluate((token, APP_DEBUG, APP_ONMESSAGE) => {
+        await page.evaluate((token, APP_DEBUG, APP_MESSAGE) => {
           setTimeout(() => {
             window.Store.AppState.on('change:state', (_AppState, state) => { window.onAppStateChangedEvent(state); });
             // EMMITER EVENT APP STATE
             window.Store.AppState.on('change', () => onChangeState())
             // EMMITER EVENTS MESSAGES ADD
-            if(APP_ONMESSAGE){
+            if(APP_MESSAGE){
               window.Store.Msg.on('add', (new_message) => {
                 const message = new_message.serialize()
                 if(message.id.remote != 'status@broadcast'){
@@ -426,7 +422,7 @@ class PuppeteerWhatsApp extends EventEmitter {
               })
             }
           }, 4500)
-        }, token, APP_DEBUG, APP_ONMESSAGE)
+        }, token, APP_DEBUG, APP_MESSAGE)
 
         var end_time = (Date.now() - time_start) / 1000
         var value = 'READY ' + token + ' IN ' + end_time + ' SEC.'
@@ -480,7 +476,6 @@ class PuppeteerWhatsApp extends EventEmitter {
                 }catch(e){
                   WhatsApp.sendToWebhook(typeMessage, message, data_token)
                 }
-
                 return
               }
             }
