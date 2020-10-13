@@ -33,7 +33,12 @@ if(typeof argv[3] === 'undefined')var addmessage = 'true';
 else var addmessage = (argv[3]).replace('MESSAGE=', '');
 var addmessage = addmessage == 'true' ? true : false;
 
-console.log({port: port, headless: headless, debug: debug, message: addmessage})
+// DEFINE SIMPLE MESSAGE
+if(typeof argv[4] === 'undefined')var min_resolution = 'false';
+else var min_resolution = (argv[4]).replace('MINRES=', '');
+var min_resolution = min_resolution == 'true' ? true : false;
+
+console.log({port: port, headless: headless, debug: debug, message: addmessage, min_resolution: min_resolution})
 
 // DEFINE CONST WHATSAPP WEB
 const APP_HEADLESS = headless
@@ -50,6 +55,7 @@ const APP_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWeb
 const APP_LINUX = '/usr/bin/chromium-browser'
 const APP_DEBUG = debug
 const APP_MESSAGE = addmessage
+const APP_MIN_RESOLUTION = min_resolution
 
 // PUPPETEER EMITTER
 class PuppeteerWhatsApp extends EventEmitter {
@@ -60,7 +66,7 @@ class PuppeteerWhatsApp extends EventEmitter {
   }
 
   // CHECKED
-  async start(token, bot, webhook, url_socket){
+  async start(token, bot, webhook, socket){
     try {
       const time_start = Date.now()
 
@@ -102,6 +108,10 @@ class PuppeteerWhatsApp extends EventEmitter {
       if(APP_HEADLESS)puppeteer_args.push('--force-gpu-mem-available-mb');
       else{
         if(APP_DEBUG)puppeteer_args.push('--auto-open-devtools-for-tabs');
+        if(APP_MIN_RESOLUTION){
+          puppeteer_args.push('--start-fullscreen');
+          puppeteer_args.push('--start-maximized');
+        }
       }
       //console.log(puppeteer_args);
 
@@ -140,6 +150,13 @@ class PuppeteerWhatsApp extends EventEmitter {
       await page.setExtraHTTPHeaders({ 'Accept-Language': APP_LANGUAGE })
       await page.setRequestInterception(true)
 
+      if(!APP_HEADLESS && APP_MIN_RESOLUTION){
+        await page.setViewport({
+          width: 480,
+          height: 320
+        });
+      }
+
       // PUPPETEER CONSOLE
       await page.on('console', msg => {
         for (const arg of msg.args()) {
@@ -172,7 +189,7 @@ class PuppeteerWhatsApp extends EventEmitter {
               console.log('AUTOSTART TOKEN')
               var send = {
                 method: 'post',
-                body: JSON.stringify({ bot: data_token.bot, webhook: data_token.webhook }),
+                body: JSON.stringify({ bot: data_token.bot, webhook: data_token.webhook, socket: data_token.socket }),
                 headers: { 'Content-Type': 'application/json' }
               }
               const uri_fetch = APP_SERVER + '/' + APP_API_PATH + '/' + token_name + '/start'
@@ -193,6 +210,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         if ([/* 'stylesheet', */'image', 'font', 'media'].indexOf(request.resourceType()) !== -1)request.abort()
         else request.continue()
       })
+
 
       // TOKEN SESSION
       var data_token_db = db_token.get('token').find({ name: token }).value()
@@ -264,7 +282,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         await page.evaluate(res => JSON.stringify(window.localStorage)).then(localStorage => {
           console.log('TOKEN SAVED')
           db_token.get('token').remove({ name: token }).write()
-          db_token.get('token').push({ name: token, endpoint: null, localstorage: localStorage, bot: bot, webhook: webhook, socket: url_socket }).write()
+          db_token.get('token').push({ name: token, endpoint: null, localstorage: localStorage, bot: bot, webhook: webhook, socket: socket }).write()
         })
 
         // ADD MODULERAID - INJECT
@@ -303,10 +321,10 @@ class PuppeteerWhatsApp extends EventEmitter {
           console.log('WHATSAPP LOADED IN ' + time + ' SEC')
 
           //OPEN SOCKET CLIENT
-          if(url_socket != ''){
-            console.log('SOCKET ON ' + token + ' AT ' + url_socket)
-            var socket = require('socket.io-client')(url_socket)
-            socket.on(token, (data) => {
+          if(socket != ''){
+            console.log('SOCKET ON ' + token + ' AT ' + socket)
+            var socket_client = require('socket.io-client')(socket)
+            socket_client.on(token, (data) => {
               var to_data = data.data;
               var to_action = to_data.action
               if(APP_DEBUG)console.log(to_data)
@@ -327,6 +345,7 @@ class PuppeteerWhatsApp extends EventEmitter {
             })
           }
         })
+
 
         if(APP_MESSAGE){
           // ON NEW MESSAGE TO ME
@@ -389,12 +408,19 @@ class PuppeteerWhatsApp extends EventEmitter {
         // ADD MESSAGES EVENT
         console.log('READING MESSAGES')
 
-        await page.evaluate((token, APP_DEBUG, APP_MESSAGE) => {
+        await page.evaluate((token, APP_DEBUG, APP_MESSAGE, APP_HEADLESS, APP_MIN_RESOLUTION) => {
           setTimeout(() => {
             window.Store.AppState.on('change:state', (_AppState, state) => { window.onAppStateChangedEvent(state); });
             // EMMITER EVENT APP STATE
             window.Store.AppState.on('change', () => onChangeState())
             // EMMITER EVENTS MESSAGES ADD
+
+            if(!APP_HEADLESS && APP_MIN_RESOLUTION){
+              const removeElements = (elms) => elms.forEach(el => el.remove());
+              removeElements(document.querySelectorAll("._1DzHI"));
+              document.body.style.zoom = "50%";
+            }
+
             if(APP_MESSAGE){
               window.Store.Msg.on('add', (new_message) => {
                 const message = new_message.serialize()
@@ -422,7 +448,7 @@ class PuppeteerWhatsApp extends EventEmitter {
               })
             }
           }, 4500)
-        }, token, APP_DEBUG, APP_MESSAGE)
+        }, token, APP_DEBUG, APP_MESSAGE, APP_HEADLESS, APP_MIN_RESOLUTION)
 
         var end_time = (Date.now() - time_start) / 1000
         var value = 'READY ' + token + ' IN ' + end_time + ' SEC.'
@@ -504,12 +530,12 @@ class PuppeteerWhatsApp extends EventEmitter {
           }else{
             if (typeof data_token.socket !== 'undefined' && data_token.socket != null) {
               WhatsApp.getWebSocketPage(data_token.endpoint).then(json_page => {
-                var url_socket = data_token.socket;
-                if(url_socket != ''){
-                  if(APP_DEBUG)console.log('SEND SOCKET ' + typeMessage + ' -> ' + url_socket)
-                  var socket = require('socket.io-client')(url_socket)
+                var socket = data_token.socket;
+                if(socket != ''){
+                  if(APP_DEBUG)console.log('SEND SOCKET ' + typeMessage + ' -> ' + socket)
+                  var socket_client = require('socket.io-client')(socket)
                   message.typeMessage = typeMessage
-                  socket.emit(typeMessage, message)
+                  socket_client.emit(typeMessage, message)
                 }
               })
             }
@@ -1151,28 +1177,35 @@ class PuppeteerWhatsApp extends EventEmitter {
               if(APP_DEBUG){
                 console.log('TOKEN NAME: ' + token)
                 console.log('ACTION: ' + action)
+                console.log(req.body);
               }
 
               if (token == '')res.json({ response: 'Not allowed empty token', status_code: 401 })
               else if (action == '')res.json({ response: 'Not allowed empty action', status_code: 401 })
               else {
                 const WhatsApp = this
-                //console.log(req.body);
+
+                //BOT URL
+                if (typeof req.body.bot === 'string' && (req.body.bot).trim() != '' && this.isUrl(req.body.bot))var bot = (req.body.bot).trim()
+                else var bot = null
+
+                //WEBHOOK URL
+                if (typeof req.body.webhook === 'string' && (req.body.webhook).trim() != '' && this.isUrl(req.body.webhook))var webhook = (req.body.webhook).trim()
+                else var webhook = null
+
+                //SOCKET SERVER URL
+                if (typeof req.body.socket === 'string' && (req.body.socket).trim() != '' && this.isUrl(req.body.socket))var socket = (req.body.socket).trim()
+                else var socket = null
+
+                //TRUSTED PHONES TO SEND MESSAGE BROADCAST
+                if (typeof req.body.trusted === 'string' && (req.body.trusted).trim() != '')var trusted = (req.body.trusted).trim()
+                else var trusted = []
+
+                console.log(trusted)
+
                 if(action == 'start'){
 
-                  //BOT URL
-                  if (typeof req.body.bot === 'string' && (req.body.bot).trim() != '' && this.isUrl(req.body.bot)) var bot = (req.body.bot).trim()
-                  else var bot = ''
-
-                  //WEBHOOK URL
-                  if (typeof req.body.webhook === 'string' && (req.body.webhook).trim() != '' && this.isUrl(req.body.webhook)) var webhook = (req.body.webhook).trim()
-                  else var webhook = ''
-
-                  //SOCKET SERVER URL
-                  if (typeof req.body.socket === 'string' && (req.body.socket).trim() != '' && this.isUrl(req.body.socket))var url_socket = (req.body.socket).trim()
-                  else var url_socket = ''
-
-                  this.start(token, bot, webhook, url_socket)
+                  this.start(token, bot, webhook, socket)
 
                   this.on('API', json => {
                     try { res.json(json) } catch (e) {
@@ -1181,140 +1214,145 @@ class PuppeteerWhatsApp extends EventEmitter {
                       }
                     }
                   })
-                } else {
+                }else{
                   const thisdb = this.getDatabaseToken()
                   const data_token = thisdb.get('token').find({ name: token }).value()
                   if (typeof data_token === 'undefined' || typeof data_token.endpoint === 'undefined' || data_token.endpoint == null || data_token.endpoint == '') {
                     res.json({ response: 'Undefined login', status_code: 403 })
-                  } else {
-                    //if (APP_DEBUG) console.log(req.body)
-                    const number = req.body.number
-                    const message = req.body.message
-                    var options = {}
-                    if (typeof req.body.options !== 'undefined' && req.body.options != '') {
-                      try {
-                        var options = JSON.parse(req.body.options)
-                      } catch (e) {
-                        var options = JSON.parse(JSON.stringify(req.body.options));
-                      }
-                    }
-
-                    this.getWebSocketPage(data_token.endpoint).then(json_page => {
-                      if (json_page != null && typeof json_page === 'object' && typeof json_page.page !== 'undefined' && json_page.page != null) {
-                        var page = json_page.page
-                        var browser = json_page.browser
-                        switch (action) {
-                          case 'stats':
-                            this.getChatStats(page).then(response => {
-                              this.sendToWebhook(action, response, data_token)
-                              res.json(response)
-                            })
-                          break
-                          case 'state':
-                            this.getStatePage(page).then(response => {
-                              this.sendToWebhook(action, response, data_token)
-                              res.json(response)
-                            })
-                          break
-                          case 'me':
-                            this.getMe(page).then(response => {
-                              this.sendToWebhook(action, response, data_token)
-                              res.json(response)
-                            })
-                          break
-                          case 'contact':
-                            this.getContact(page, number).then(response => {
-                              this.sendToWebhook(action, response, data_token)
-                              res.json(response)
-                            })
-                          break
-                          case 'picture':
-                            this.getProfilePicThumb(page, number).then(response => {
-                              this.sendToWebhook(action, response, data_token)
-                              res.json(response)
-                            })
-                          break
-                          case 'allchat':
-                            this.getChat(page, number).then(response => {
-                              this.sendToWebhook(action, response, data_token)
-                              res.json(response)
-                            })
-                          break
-                          case 'chat':
-                            this.getChatProfile(page).then(response => {
-                              this.sendToWebhook(action, response, data_token)
-                              res.json(response)
-                            })
-                          break
-                          case 'unread':
-                            this.getChatUnread(page).then(response => {
-                              this.sendToWebhook(action, response, data_token)
-                              res.json(response)
-                            })
-                          break
-                          case 'seen':
-                            this.setContactSeen(page, number).then(response => {
-                              this.sendToWebhook(action, response, data_token)
-                              res.json(response)
-                            })
-                          break
-                          case 'message':
-                            this.sendMessage(page, number, message).then(response => {
-                              this.sendToWebhook(action, response, data_token)
-                              res.json(response)
-                            })
-                          break
-                          case 'media':
-                            this.sendMedia(page, number, options).then(response => {
-                              this.sendToWebhook(action, response, data_token)
-                              res.json(response)
-                            })
-                          break
-                          case 'download':
-                            this.getMedia(page, options).then(response => {
-                              this.sendToWebhook(action, response, data_token)
-                              res.json(response)
-                            })
-                          break
-                          case 'broadcast':
-                            this.sendBroadcast(page, token, message, options).then(response => {
-                              this.sendToWebhook(action, response, data_token)
-                              res.json(response)
-                            })
-                          break
-                          case 'logout':
-                            this.setLogout(page).then(response => {
-                              setTimeout(() => {
-                                if (typeof browser !== null && typeof token !== 'undefined') {
-                                  thisdb.get('token').find({ name: token }).assign({ localstorage: null, endpoint: null, bot: null, webhook: null, socket: null }).write()
-                                  this.setDestroy(browser, page, token)
-                                }
-                              }, 1500)
-                              res.json(response)
-                            })
-                          break
-                          case 'storage':
-                            this.getNavigatorStorage(page).then(response => {
-                            this.sendToWebhook(action, response, data_token)
-                            res.json(response)
-                          })
-                          break
-                          case 'load_message':
-                            this.loadEarlierMsgstById(page, number).then(response => {
-                              this.sendToWebhook(action, response, data_token)
-                              res.json(response)
-                            })
-                            break
-                          default:
-                            res.json({ response: 'No action: ' + action, status_code: 404 })
-                            break
+                  }else{
+                    if(action == 'config'){
+                      var new_config = { localstorage: data_token.localstorage, endpoint: data_token.endpoint, bot: bot, webhook: webhook, socket: socket, trusted: trusted }
+                      thisdb.get('token').find({ name: token }).assign(new_config).write()
+                      res.json({ response: 'Set config', values: new_config, status_code: 200 })
+                    }else{
+                      const number = req.body.number
+                      const message = req.body.message
+                      var options = {}
+                      if (typeof req.body.options !== 'undefined' && req.body.options != '') {
+                        try {
+                          var options = JSON.parse(req.body.options)
+                        } catch (e) {
+                          var options = JSON.parse(JSON.stringify(req.body.options));
                         }
-                      } else {
-                        thisdb.get('token').find({ name: token }).assign({ endpoint: null }).write()
-                        res.json({ response: 'Invalid page token', status_code: 405 })
-                        return false
                       }
-                    })
+
+                      this.getWebSocketPage(data_token.endpoint).then(json_page => {
+                        if (json_page != null && typeof json_page === 'object' && typeof json_page.page !== 'undefined' && json_page.page != null) {
+                          var page = json_page.page
+                          var browser = json_page.browser
+                          switch (action) {
+                            case 'stats':
+                              this.getChatStats(page).then(response => {
+                                this.sendToWebhook(action, response, data_token)
+                                res.json(response)
+                              })
+                            break
+                            case 'state':
+                              this.getStatePage(page).then(response => {
+                                this.sendToWebhook(action, response, data_token)
+                                res.json(response)
+                              })
+                            break
+                            case 'me':
+                              this.getMe(page).then(response => {
+                                this.sendToWebhook(action, response, data_token)
+                                res.json(response)
+                              })
+                            break
+                            case 'contact':
+                              this.getContact(page, number).then(response => {
+                                this.sendToWebhook(action, response, data_token)
+                                res.json(response)
+                              })
+                            break
+                            case 'picture':
+                              this.getProfilePicThumb(page, number).then(response => {
+                                this.sendToWebhook(action, response, data_token)
+                                res.json(response)
+                              })
+                            break
+                            case 'allchat':
+                              this.getChat(page, number).then(response => {
+                                this.sendToWebhook(action, response, data_token)
+                                res.json(response)
+                              })
+                            break
+                            case 'chat':
+                              this.getChatProfile(page).then(response => {
+                                this.sendToWebhook(action, response, data_token)
+                                res.json(response)
+                              })
+                            break
+                            case 'unread':
+                              this.getChatUnread(page).then(response => {
+                                this.sendToWebhook(action, response, data_token)
+                                res.json(response)
+                              })
+                            break
+                            case 'seen':
+                              this.setContactSeen(page, number).then(response => {
+                                this.sendToWebhook(action, response, data_token)
+                                res.json(response)
+                              })
+                            break
+                            case 'message':
+                              this.sendMessage(page, number, message).then(response => {
+                                this.sendToWebhook(action, response, data_token)
+                                res.json(response)
+                              })
+                            break
+                            case 'media':
+                              this.sendMedia(page, number, options).then(response => {
+                                this.sendToWebhook(action, response, data_token)
+                                res.json(response)
+                              })
+                            break
+                            case 'download':
+                              this.getMedia(page, options).then(response => {
+                                this.sendToWebhook(action, response, data_token)
+                                res.json(response)
+                              })
+                            break
+                            case 'broadcast':
+                              this.sendBroadcast(page, token, message, options).then(response => {
+                                this.sendToWebhook(action, response, data_token)
+                                res.json(response)
+                              })
+                            break
+                            case 'logout':
+                              this.setLogout(page).then(response => {
+                                setTimeout(() => {
+                                  if (typeof browser !== null && typeof token !== 'undefined') {
+                                    thisdb.get('token').find({ name: token }).assign({ localstorage: null, endpoint: null, bot: null, webhook: null, socket: null, trusted: [] }).write()
+                                    this.setDestroy(browser, page, token)
+                                  }
+                                }, 1500)
+                                res.json(response)
+                              })
+                            break
+                            case 'storage':
+                              this.getNavigatorStorage(page).then(response => {
+                              this.sendToWebhook(action, response, data_token)
+                              res.json(response)
+                            })
+                            break
+                            case 'load_message':
+                              this.loadEarlierMsgstById(page, number).then(response => {
+                                this.sendToWebhook(action, response, data_token)
+                                res.json(response)
+                              })
+                              break
+                            default:
+                              res.json({ response: 'No action: ' + action, status_code: 404 })
+                              break
+                          }
+                        } else {
+                          thisdb.get('token').find({ name: token }).assign({ endpoint: null }).write()
+                          res.json({ response: 'Invalid page token', status_code: 405 })
+                          return false
+                        }
+                      })
+                    }
                   }
                 }
               }
