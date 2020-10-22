@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Page Title</title>
+</head>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha2/css/bootstrap.min.css" integrity="sha384-DhY6onE6f3zzKbjUPRc2hOzGAdEf4/Dz+WJwBvEYL/lkkIsI3ihufq9hk9K4lVoK" crossorigin="anonymous">
+<style>textarea {resize: none;}</style>
+<body>
+
+  <div class="container">
+    <div class="row pt-3">
+      <div class="col-12 col-sm-12 col-md-3 col-lg-3 col-xl-4">
+      </div>
+      <div class="col-12 col-sm-12 col-md-6 col-lg-6 col-xl-4">
+        <div class="card border-0">
+          <img src="" class="rounded mx-auto d-block p-4" style="max-width:140px" id="picture">
+          <div class="card-body">
+            <h5 id="pushname" class="card-title text-center"></h5>
+            <p id="phone" class="card-text text-center"></p>
+            <div id="stats">
+              <table class="table">
+                <thead class="table-light">
+                  <tr>
+                    <td class="border-0 text-center">Chats</td>
+                    <td class="border-0 text-center">Unread</td>
+                    <td class="border-0 text-center">Battery</td>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="border-0 text-center" id="chats"></td>
+                    <td class="border-0 text-center" id="unread"></td>
+                    <td class="border-0 text-center" id="battery"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="py-3">
+              <div id="alert"></div>
+              <label for="message" class="form-label">Message to broadcast</label>
+              <textarea class="form-control form-control-lg border-2" id="message" rows="8"></textarea>
+            </div>
+            <button id="send" type="button" disabled class="btn btn-primary btn-lg btn-block">Send</button>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-sm-12 col-md-3 col-lg-3 col-xl-4">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (async () => {
+      var token = '<%= tokenname %>'
+      var url =  '<%= url %>'
+      var url_api = url + '/api/' + token + '/'
+
+      var is_connected = await fetch(url).then((response) => {
+        if(response.ok)return true
+        else return false
+      }).catch(error => false)
+      //console.log(is_connected)
+
+      if(is_connected){
+        var me = await fetch(url_api + 'me')
+        .then(response => response.json())
+        .then(data => data)
+
+        if(typeof me === 'object'){
+
+          document.getElementById('picture').src = me.picture.eurl
+          document.getElementById('phone').innerHTML = me.me.user
+          document.getElementById('pushname').innerHTML = me.pushname
+          document.getElementById('battery').innerHTML = me.battery + '%'
+          document.getElementById('send').removeAttribute('disabled')
+
+          var stats = await fetch(url_api + 'stats')
+          .then(response => response.json())
+          .then(data => data)
+
+          if(typeof stats.chat !== 'undefined'){
+            document.getElementById('chats').innerHTML = stats.chat
+            document.getElementById('unread').innerHTML = stats.unread
+          }
+
+          document.getElementById("send").addEventListener('click', () => {
+            var message = (document.getElementById('message').value).trim()
+            if(message == ''){
+              document.getElementById('alert').innerHTML = '<div id="alert" class="alert alert-warning">Please write a message...</div>';
+            }else{
+              if(window.confirm("Are you sure to send?")){
+                document.getElementById('send').setAttribute('disabled', '')
+                fetch(url_api + 'broadcast', {
+                  method: 'POST',
+                  headers: {'Content-Type': 'application/json'},
+                  body: JSON.stringify({'message': message})
+                })
+                .then(response => response.json())
+                .then(data => {
+                  if(typeof data.chats !== 'undefined' && data.chats > 0)var alert = '<div id="alert" class="alert alert-success">Message send to ' + data.chats + ' chats </div>'
+                  else var alert = '<div id="alert" class="alert alert-danger">Error sending message</div>'
+                  document.getElementById('alert').innerHTML = alert
+                  document.getElementById('send').removeAttribute('disabled')
+                  document.getElementById('message').value = ''
+                })
+              }
+            }
+          })
+        }
+      }else{
+        document.getElementById('message').remove()
+        document.getElementById('send').remove()
+        document.getElementById('stats').remove()
+        document.getElementById('alert').innerHTML = '<div id="alert" class="alert alert-danger">Not connected</div>'
+      }
+    })();
+  </script>
+</body>
+</html>

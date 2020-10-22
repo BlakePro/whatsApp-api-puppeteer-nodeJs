@@ -161,7 +161,6 @@ exports.WindowUtils = () => {
       if(message.type)message.type = 'sticker';
       if(message.mimetype)message.mimetype = 'image/webp';
     }
-    //console.log(message)
     await window.Store.SendMessage.addAndSendMsgToChat(chat, message);
     return window.Store.Msg.get(newMsgId._serialized);
   };

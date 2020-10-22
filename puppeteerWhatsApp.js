@@ -11,34 +11,25 @@ const qrcode_terminal = require('qrcode-terminal')
 const moment = require('moment');
 const path = require('path')
 const fs = require('fs');
+const jsonArgs = require("@toolia/json-args").default;
+const argv = jsonArgs(process.argv.slice(2));
 const userDataDir = path.dirname(__filename) + '/data';
-const argv = process.argv.slice(2);
 
-// DEFINE PORT WEBSERVICE
-if(typeof argv[0] === 'undefined')var port = 8333;
-else var port = parseInt((argv[0]).replace('PORT=', ''));
+var port = 8333
+var headless = true
+var debug = false
+var addmessage = true
+var auth_user = 'user'
+var auth_password = 'pass'
 
-// DEFINE HEADLESS PUPPETEER
-if(typeof argv[1] === 'undefined')var headless = 'false';
-else var headless = (argv[1]).replace('HEADLESS=', '');
-var headless = headless == 'true' ? true : false;
+if(typeof argv.port === 'number')port = argv.port
+if(typeof argv.headless === 'boolean')headless = argv.headless
+if(typeof argv.debug === 'boolean')debug = argv.debug
+if(typeof argv.message === 'boolean')addmessage = argv.message
+if(typeof argv.user !== 'undefined')auth_user = argv.user
+if(typeof argv.pass !== 'undefined')auth_password = argv.pass
 
-// DEFINE DEBUG
-if(typeof argv[2] === 'undefined')var debug = 'true';
-else var debug = (argv[2]).replace('DEBUG=', '');
-var debug = debug == 'true' ? true : false;
-
-// DEFINE SIMPLE MESSAGE
-if(typeof argv[3] === 'undefined')var addmessage = 'true';
-else var addmessage = (argv[3]).replace('MESSAGE=', '');
-var addmessage = addmessage == 'true' ? true : false;
-
-// DEFINE SIMPLE MESSAGE
-if(typeof argv[4] === 'undefined')var min_resolution = 'false';
-else var min_resolution = (argv[4]).replace('MINRES=', '');
-var min_resolution = min_resolution == 'true' ? true : false;
-
-console.log({port: port, headless: headless, debug: debug, message: addmessage, min_resolution: min_resolution})
+console.log({port: port, headless: headless, debug: debug, message: addmessage, user: auth_user, password: auth_password})
 
 // DEFINE CONST WHATSAPP WEB
 const APP_HEADLESS = headless
@@ -55,7 +46,8 @@ const APP_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWeb
 const APP_LINUX = '/usr/bin/chromium-browser'
 const APP_DEBUG = debug
 const APP_MESSAGE = addmessage
-const APP_MIN_RESOLUTION = min_resolution
+const APP_AUTH_USER = auth_user
+const APP_AUTH_PASSWORD = auth_password
 
 // PUPPETEER EMITTER
 class PuppeteerWhatsApp extends EventEmitter {
@@ -108,10 +100,6 @@ class PuppeteerWhatsApp extends EventEmitter {
       if(APP_HEADLESS)puppeteer_args.push('--force-gpu-mem-available-mb');
       else{
         if(APP_DEBUG)puppeteer_args.push('--auto-open-devtools-for-tabs');
-        if(APP_MIN_RESOLUTION){
-          puppeteer_args.push('--start-fullscreen');
-          puppeteer_args.push('--start-maximized');
-        }
       }
       //console.log(puppeteer_args);
 
@@ -149,13 +137,6 @@ class PuppeteerWhatsApp extends EventEmitter {
       await page.setUserAgent(APP_USER_AGENT)
       await page.setExtraHTTPHeaders({ 'Accept-Language': APP_LANGUAGE })
       await page.setRequestInterception(true)
-
-      if(!APP_HEADLESS && APP_MIN_RESOLUTION){
-        await page.setViewport({
-          width: 480,
-          height: 320
-        });
-      }
 
       // PUPPETEER CONSOLE
       await page.on('console', msg => {
@@ -338,10 +319,6 @@ class PuppeteerWhatsApp extends EventEmitter {
                 headers: { 'Content-Type': 'application/json' }
               }
               fetch(to_url, to_send)
-              /*
-              fetch(to_url, to_send).then(res => res.json()).then(response => {
-                console.log(response)
-              })*/
             })
           }
         })
@@ -408,17 +385,17 @@ class PuppeteerWhatsApp extends EventEmitter {
         // ADD MESSAGES EVENT
         console.log('READING MESSAGES')
 
-        await page.evaluate((token, APP_DEBUG, APP_MESSAGE, APP_HEADLESS, APP_MIN_RESOLUTION) => {
+        await page.evaluate((token, APP_DEBUG, APP_MESSAGE, APP_HEADLESS) => {
           setTimeout(() => {
             window.Store.AppState.on('change:state', (_AppState, state) => { window.onAppStateChangedEvent(state); });
-            // EMMITER EVENT APP STATE
+            // EMITER EVENT APP STATE
             window.Store.AppState.on('change', () => onChangeState())
-            // EMMITER EVENTS MESSAGES ADD
+            // EMITER EVENTS MESSAGES ADD
 
-            if(!APP_HEADLESS && APP_MIN_RESOLUTION){
+            if(!APP_HEADLESS){
               const removeElements = (elms) => elms.forEach(el => el.remove());
               removeElements(document.querySelectorAll("._1DzHI"));
-              document.body.style.zoom = "50%";
+              document.body.className = "web dark"
             }
 
             if(APP_MESSAGE){
@@ -448,7 +425,7 @@ class PuppeteerWhatsApp extends EventEmitter {
               })
             }
           }, 4500)
-        }, token, APP_DEBUG, APP_MESSAGE, APP_HEADLESS, APP_MIN_RESOLUTION)
+        }, token, APP_DEBUG, APP_MESSAGE, APP_HEADLESS)
 
         var end_time = (Date.now() - time_start) / 1000
         var value = 'READY ' + token + ' IN ' + end_time + ' SEC.'
@@ -1137,9 +1114,10 @@ class PuppeteerWhatsApp extends EventEmitter {
     try {
       if(typeof APP_PORT === 'number'){
         const is_open = await isFreePort(APP_PORT, APP_HOST).then(open => open[2])
-        if (is_open) {
+        if(is_open){
           const express = require('express')
           const bodyParser = require('body-parser')
+          const basicAuth = require('express-basic-auth');
           const cors = require('cors')
           const helmet = require('helmet')
           const http = require('http')
@@ -1147,9 +1125,22 @@ class PuppeteerWhatsApp extends EventEmitter {
           const server = http.createServer(ws)
 
           ws.use(cors())
-          ws.use(bodyParser.json({ limit: '40mb', extended: true }))
-          ws.use(bodyParser.urlencoded({ limit: '40mb', extended: true }))
+          ws.use(bodyParser.json({ limit: '60mb', extended: true }))
+          ws.use(bodyParser.urlencoded({ limit: '60mb', extended: true }))
           ws.use(helmet())
+
+          //ENGINE FROM TEMPLATE
+          ws.engine('html', require('ejs').renderFile)
+          ws.set('view engine', 'html')
+          ws.set('views', __dirname)
+
+          //BASICAUTH
+          var userauth = {}
+          userauth[APP_AUTH_USER] = APP_AUTH_PASSWORD
+          ws.use(basicAuth({
+            users: userauth,
+            challenge: true,
+          }))
 
           server.listen(APP_PORT, () => {
             console.log('START WEBSERVICE ON ' + APP_SERVER)
@@ -1182,7 +1173,9 @@ class PuppeteerWhatsApp extends EventEmitter {
 
               if (token == '')res.json({ response: 'Not allowed empty token', status_code: 401 })
               else if (action == '')res.json({ response: 'Not allowed empty action', status_code: 401 })
-              else {
+              else if(action == 'dashboard'){
+                res.render(action, {tokenname: token, url: APP_SERVER});
+              }else {
                 const WhatsApp = this
 
                 //BOT URL
@@ -1197,11 +1190,6 @@ class PuppeteerWhatsApp extends EventEmitter {
                 if (typeof req.body.socket === 'string' && (req.body.socket).trim() != '' && this.isUrl(req.body.socket))var socket = (req.body.socket).trim()
                 else var socket = null
 
-                //TRUSTED PHONES TO SEND MESSAGE BROADCAST
-                if (typeof req.body.trusted === 'string' && (req.body.trusted).trim() != '')var trusted = (req.body.trusted).trim()
-                else var trusted = []
-
-                console.log(trusted)
 
                 if(action == 'start'){
 
@@ -1221,7 +1209,7 @@ class PuppeteerWhatsApp extends EventEmitter {
                     res.json({ response: 'Undefined login', status_code: 403 })
                   }else{
                     if(action == 'config'){
-                      var new_config = { localstorage: data_token.localstorage, endpoint: data_token.endpoint, bot: bot, webhook: webhook, socket: socket, trusted: trusted }
+                      var new_config = { localstorage: data_token.localstorage, endpoint: data_token.endpoint, bot: bot, webhook: webhook, socket: socket}
                       thisdb.get('token').find({ name: token }).assign(new_config).write()
                       res.json({ response: 'Set config', values: new_config, status_code: 200 })
                     }else{
@@ -1323,7 +1311,7 @@ class PuppeteerWhatsApp extends EventEmitter {
                               this.setLogout(page).then(response => {
                                 setTimeout(() => {
                                   if (typeof browser !== null && typeof token !== 'undefined') {
-                                    thisdb.get('token').find({ name: token }).assign({ localstorage: null, endpoint: null, bot: null, webhook: null, socket: null, trusted: [] }).write()
+                                    thisdb.get('token').find({ name: token }).assign({ localstorage: null, endpoint: null, bot: null, webhook: null, socket: null}).write()
                                     this.setDestroy(browser, page, token)
                                   }
                                 }, 1500)
