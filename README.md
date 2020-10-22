@@ -33,12 +33,12 @@ sudo npm i
 
 **Run WebService**
 ```sh
-npm test PORT=8333 HEADLESS=false DEBUG=true MESSAGE=true
+npm test port=8333 headless=true debug=false message=true user=user password=pass
 ```
 
 **Run WebService (background mode)**
 ```sh
-npm start PORT=8333 HEADLESS=true DEBUG=false MESSAGE=true &
+npm start port=8333 headless=true debug=false message=true user=user password=pass &
 ```
 
 **Stop WebService (background mode)**
@@ -89,6 +89,7 @@ git clone https://github.com/BlakePro/WhatsAppWebApiNodeJS.git
 | Endpoint        | Post           |
 | -------------   | -------------  |
 | start           | bot: url <br>  webhook: url  |
+| template         | `null`  |
 | contact         | number: string |
 | picture           | number: string |
 | seen            | number: string **(required)** |
