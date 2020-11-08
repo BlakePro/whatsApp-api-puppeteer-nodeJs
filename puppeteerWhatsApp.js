@@ -21,6 +21,7 @@ var debug = false
 var addmessage = true
 var auth_user = 'user'
 var auth_password = 'pass'
+var domain = ''
 
 if(typeof argv.port === 'number')port = argv.port
 if(typeof argv.headless === 'boolean')headless = argv.headless
@@ -28,14 +29,15 @@ if(typeof argv.debug === 'boolean')debug = argv.debug
 if(typeof argv.message === 'boolean')addmessage = argv.message
 if(typeof argv.user !== 'undefined')auth_user = argv.user
 if(typeof argv.pass !== 'undefined')auth_password = argv.pass
-
-console.log({port: port, headless: headless, debug: debug, message: addmessage, user: auth_user, password: auth_password})
+if(typeof argv.domain !== 'undefined')domain = argv.domain
 
 // DEFINE CONST WHATSAPP WEB
 const APP_HEADLESS = headless
 const APP_HOST = '0.0.0.0'
 const APP_PORT = port
 const APP_SERVER = 'http://localhost:' + APP_PORT
+if(domain == '')domain = APP_SERVER
+const APP_DOMAIN = domain
 const APP_API_DIR = '/'
 const APP_API_PATH = 'api'
 const APP_URI = 'https://web.whatsapp.com'
@@ -48,6 +50,8 @@ const APP_DEBUG = debug
 const APP_MESSAGE = addmessage
 const APP_AUTH_USER = auth_user
 const APP_AUTH_PASSWORD = auth_password
+
+console.log({port: port, headless: headless, debug: debug, message: addmessage, user: auth_user, password: auth_password, domain: domain})
 
 // PUPPETEER EMITTER
 class PuppeteerWhatsApp extends EventEmitter {
@@ -246,7 +250,7 @@ class PuppeteerWhatsApp extends EventEmitter {
       }
 
       // EVALUATE INJECTED TOKEN SESSION
-      const is_token = await page.waitForSelector(APP_KEEP_PHONE_CONNECTED_SELECTOR, { timeout: 70000 }).then(res => {
+      const is_token = await page.waitForSelector(APP_KEEP_PHONE_CONNECTED_SELECTOR, { timeout: 90000 }).then(res => {
         console.log('VALID TOKEN')
         return true
       }).catch(e => {
@@ -295,7 +299,7 @@ class PuppeteerWhatsApp extends EventEmitter {
           sessionStorage.setItem('BW', bw_endpoint)
           sessionStorage.setItem('WS', ws_endpoint)
           sessionStorage.setItem('TK', token)
-          return window.Store.Conn.serialize()
+          return window.Store.Conn.wid
 
         }, bw_endpoint, ws_endpoint, token).then(me => {
           var time = (Date.now() - time_start) / 1000
@@ -809,10 +813,9 @@ class PuppeteerWhatsApp extends EventEmitter {
   async getMe(page){
     try {
       return await page.evaluate(() => {
-        var me = window.Store.Conn.serialize()
-        var id = me.me._serialized
-        me.picture = window.Store.ProfilePicThumb.get(id).serialize()
-        return me
+        var data = window.Store.Conn.serialize()
+        data.picture = window.Store.Contact.get(window.Store.Conn.wid._serialized).__x_profilePicThumb.__x_img
+        return data
       })
     } catch (e) {
       this.getLog('getMe', e)
@@ -836,8 +839,8 @@ class PuppeteerWhatsApp extends EventEmitter {
     try {
       return await page.evaluate((id) => {
         try{
-          if (typeof id === 'undefined' || id == '') return window.Store.ProfilePicThumb.serialize()
-          else return window.Store.ProfilePicThumb.get(id).serialize()
+          if (typeof id === 'undefined' || id == '') return window.Store.Contact.serialize()
+          else return window.Store.Contact.get(id).__x_profilePicThumb.__x_img
         }catch (e) {
           return {}
         }
@@ -871,7 +874,7 @@ class PuppeteerWhatsApp extends EventEmitter {
           var msgs = chat.msgs;
           var last_msgs = msgs.slice(-1)[0]
 
-          var thumb = window.Store.ProfilePicThumb.get(user).serialize();
+          var thumb = window.Store.Contact.get(user).__x_profilePicThumb.__x_img
           var profile =  window.Store.Contact.get(user).serialize()
           var name = '';
           if(typeof profile.name === 'undefined')name = profile.pushname;
@@ -1174,7 +1177,7 @@ class PuppeteerWhatsApp extends EventEmitter {
               if (token == '')res.json({ response: 'Not allowed empty token', status_code: 401 })
               else if (action == '')res.json({ response: 'Not allowed empty action', status_code: 401 })
               else if(action == 'dashboard'){
-                res.render(action, {tokenname: token, url: APP_SERVER});
+                res.render(action, {tokenname: token, url: APP_DOMAIN});
               }else {
                 const WhatsApp = this
 

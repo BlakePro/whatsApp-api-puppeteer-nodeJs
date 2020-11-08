@@ -33,12 +33,12 @@ sudo npm i
 
 **Run WebService**
 ```sh
-npm test port=8333 headless=true debug=false message=true user=user password=pass
+npm test port=8333 headless=false debug=true message=true user=user pass=pass
 ```
 
 **Run WebService (background mode)**
 ```sh
-npm start port=8333 headless=true debug=false message=true user=user password=pass &
+npm start port=8333 headless=true debug=false message=true user=user pass=pass &
 ```
 
 **Stop WebService (background mode)**

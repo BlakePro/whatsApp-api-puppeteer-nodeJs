@@ -13,7 +13,7 @@
       </div>
       <div class="col-12 col-sm-12 col-md-6 col-lg-6 col-xl-4">
         <div class="card border-0">
-          <img src="" class="rounded mx-auto d-block p-4" style="max-width:140px" id="picture">
+          <img  class="rounded mx-auto d-block p-4" style="max-width:140px" id="picture">
           <div class="card-body">
             <h5 id="pushname" class="card-title text-center"></h5>
             <p id="phone" class="card-text text-center"></p>
@@ -65,23 +65,15 @@
         var me = await fetch(url_api + 'me')
         .then(response => response.json())
         .then(data => data)
+        console.log(me);
 
         if(typeof me === 'object'){
 
-          document.getElementById('picture').src = me.picture.eurl
-          document.getElementById('phone').innerHTML = me.me.user
+          //document.getElementById('picture').src = me.picture
+          document.getElementById('phone').innerHTML = me.wid.user
           document.getElementById('pushname').innerHTML = me.pushname
           document.getElementById('battery').innerHTML = me.battery + '%'
           document.getElementById('send').removeAttribute('disabled')
-
-          var stats = await fetch(url_api + 'stats')
-          .then(response => response.json())
-          .then(data => data)
-
-          if(typeof stats.chat !== 'undefined'){
-            document.getElementById('chats').innerHTML = stats.chat
-            document.getElementById('unread').innerHTML = stats.unread
-          }
 
           document.getElementById("send").addEventListener('click', () => {
             var message = (document.getElementById('message').value).trim()
@@ -104,6 +96,14 @@
                   document.getElementById('message').value = ''
                 })
               }
+            }
+          })
+          fetch(url_api + 'stats')
+          .then(response => response.json())
+          .then(stats => {
+            if(typeof stats.chat !== 'undefined'){
+              document.getElementById('chats').innerHTML = stats.chat
+              document.getElementById('unread').innerHTML = stats.unread
             }
           })
         }
