@@ -41,6 +41,7 @@ const APP_DOMAIN = domain
 const APP_API_DIR = '/'
 const APP_API_PATH = 'api'
 const APP_URI = 'https://web.whatsapp.com'
+const APP_TIMEOUT_SELECTOR = 120000
 const APP_KEEP_PHONE_CONNECTED_SELECTOR = '[data-tab]'
 const APP_QR_VALUE_SELECTOR = '[data-ref]'
 const APP_LANGUAGE = 'en'
@@ -250,7 +251,7 @@ class PuppeteerWhatsApp extends EventEmitter {
       }
 
       // EVALUATE INJECTED TOKEN SESSION
-      const is_token = await page.waitForSelector(APP_KEEP_PHONE_CONNECTED_SELECTOR, { timeout: 90000 }).then(res => {
+      const is_token = await page.waitForSelector(APP_KEEP_PHONE_CONNECTED_SELECTOR, { timeout: APP_TIMEOUT_SELECTOR }).then(res => {
         console.log('VALID TOKEN')
         return true
       }).catch(e => {
