@@ -3,7 +3,8 @@
 exports.WindowStore = (moduleRaidStr) => {
     eval('var moduleRaid = ' + moduleRaidStr);
     window.mR = moduleRaid();
-    window.Store = window.mR.findModule('Chat')[1].default;
+    console.log('window.mR');
+    window.Store = window.mR.findModule('Chat')[0].default;
     window.Store.AppState = window.mR.findModule('STREAM')[0].default;
     window.Store.Conn = window.mR.findModule('Conn')[0].default;
     window.Store.CryptoLib = window.mR.findModule('decryptE2EMedia')[0];
