@@ -11,7 +11,7 @@ const qrcode_terminal = require('qrcode-terminal')
 const moment = require('moment');
 const path = require('path')
 const fs = require('fs');
-const jsonArgs = require("@toolia/json-args").default;
+const jsonArgs = require('@toolia/json-args').default;
 const argv = jsonArgs(process.argv.slice(2));
 const userDataDir = path.dirname(__filename) + '/data';
 
@@ -19,6 +19,7 @@ var port = 8333
 var headless = true
 var debug = false
 var addmessage = true
+var addmessageme = false
 var auth_user = 'user'
 var auth_password = 'pass'
 var domain = ''
@@ -27,6 +28,7 @@ if(typeof argv.port === 'number')port = argv.port
 if(typeof argv.headless === 'boolean')headless = argv.headless
 if(typeof argv.debug === 'boolean')debug = argv.debug
 if(typeof argv.message === 'boolean')addmessage = argv.message
+if(typeof argv.messageMe === 'boolean')addmessageme = argv.messageMe
 if(typeof argv.user !== 'undefined')auth_user = argv.user
 if(typeof argv.pass !== 'undefined')auth_password = argv.pass
 if(typeof argv.domain !== 'undefined')domain = argv.domain
@@ -41,14 +43,15 @@ const APP_DOMAIN = domain
 const APP_API_DIR = '/'
 const APP_API_PATH = 'api'
 const APP_URI = 'https://web.whatsapp.com'
-const APP_TIMEOUT_SELECTOR = 120000
+const APP_TIMEOUT_SELECTOR = 150000
 const APP_KEEP_PHONE_CONNECTED_SELECTOR = '[data-tab]'
 const APP_QR_VALUE_SELECTOR = '[data-ref]'
 const APP_LANGUAGE = 'en'
-const APP_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36'
+const APP_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_0_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.67 Safari/537.36'
 const APP_LINUX = '/usr/bin/chromium-browser'
 const APP_DEBUG = debug
 const APP_MESSAGE = addmessage
+const APP_MESSAGE_ME = addmessageme
 const APP_AUTH_USER = auth_user
 const APP_AUTH_PASSWORD = auth_password
 
@@ -338,7 +341,9 @@ class PuppeteerWhatsApp extends EventEmitter {
               this.sendToSocket(message, this, typeMessage)
             })
           })
+        }
 
+        if(APP_MESSAGE_ME){
           // ON NEW MESSAGE FROM ME
           await page.exposeFunction('onAddMessageFromMe', (message, typeMessage) => {
             new Promise((resolve, reject) => {
@@ -390,7 +395,7 @@ class PuppeteerWhatsApp extends EventEmitter {
         // ADD MESSAGES EVENT
         console.log('READING MESSAGES')
 
-        await page.evaluate((token, APP_DEBUG, APP_MESSAGE, APP_HEADLESS) => {
+        await page.evaluate((token, APP_DEBUG, APP_MESSAGE, APP_MESSAGE_ME, APP_HEADLESS) => {
           setTimeout(() => {
             window.Store.AppState.on('change:state', (_AppState, state) => { window.onAppStateChangedEvent(state); });
             // EMITER EVENT APP STATE
@@ -403,7 +408,7 @@ class PuppeteerWhatsApp extends EventEmitter {
               document.body.className = "web dark"
             }
 
-            if(APP_MESSAGE){
+            if(APP_MESSAGE || APP_MESSAGE_ME){
               window.Store.Msg.on('add', (new_message) => {
                 const message = new_message.serialize()
                 if(message.id.remote != 'status@broadcast'){
@@ -411,15 +416,17 @@ class PuppeteerWhatsApp extends EventEmitter {
                   if (typeof message.type === 'undefined' || typeof message.isNewMsg === 'undefined' || message.isNewMsg == false ||message.broadcast == true){
                     return
                   }else{
-                    if(message.id.fromMe == true){
+                    if(APP_MESSAGE_ME && message.id.fromMe == true){
                       var typeMessage = 'FromMe';
                       message.typeMessage = typeMessage
                       onAddMessageFromMe(message, typeMessage)
                     }
                     else{
-                      var typeMessage = 'ToMe';
-                      message.typeMessage = typeMessage
-                      onAddMessageToMe(message, typeMessage)
+                      if(APP_MESSAGE){
+                        var typeMessage = 'ToMe';
+                        message.typeMessage = typeMessage
+                        onAddMessageToMe(message, typeMessage)
+                      }
                     }
                     if(APP_DEBUG){
                       console.log(message)
@@ -430,7 +437,7 @@ class PuppeteerWhatsApp extends EventEmitter {
               })
             }
           }, 4500)
-        }, token, APP_DEBUG, APP_MESSAGE, APP_HEADLESS)
+        }, token, APP_DEBUG, APP_MESSAGE, APP_MESSAGE_ME, APP_HEADLESS)
 
         var end_time = (Date.now() - time_start) / 1000
         var value = 'READY ' + token + ' IN ' + end_time + ' SEC.'
@@ -578,8 +585,8 @@ class PuppeteerWhatsApp extends EventEmitter {
                     else var number = message.from;
 
                     WhatsApp.getContact(page, number).then(contact => {
-                      WhatsApp.getProfilePicThumb(page, number).then(picture => {
-                        message.picture = picture
+                      //WhatsApp.getProfilePicThumb(page, number).then(picture => {
+                        //message.picture = picture
                         message.contact = contact
 
                         //SEND TO BOT
@@ -588,27 +595,31 @@ class PuppeteerWhatsApp extends EventEmitter {
                           body: JSON.stringify(message),
                           headers: { 'Content-Type': 'application/json' }
                         }
+                        //console.log(to_post)
 
                         //BOT RESPONSE
                         try{
-                          fetch(bot, send).then(res => res.json()).then(response => {
-                            if (typeof response === 'object' && response.status == true && typeof response.type !== 'undefined') {
+                          fetch(bot, send)
+                          .then(res => res.json())
+                          .then(response => {
+                            if (typeof response === 'object' && typeof response.status !== 'undefined' && response.status == true){
                               if(APP_DEBUG)console.log(response)
 
-                              var typeMessageBot = response.type
                               if (typeof response.message !== 'undefined' && response.message != ''){
                                 var responseMessage = response.message
 
-                                if(typeMessageBot == 'message')WhatsApp.sendMessage(page, from, responseMessage)
-                                else if(typeMessageBot == 'media')WhatsApp.sendMedia(page, from, responseMessage)
+                                WhatsApp.sendMessage(page, from, responseMessage)
 
                                 WhatsApp.sendToWebhook('to', responseMessage, data_token)
                               }
                             }
+                          }).catch(error => {
+                            if(APP_DEBUG)console.log(error);
                           })
-                        } catch (e) { if (APP_DEBUG)console.log(e) }
+
+                        } catch (e) { if(APP_DEBUG)console.log(e) }
                         //BOT RESPONSE
-                      })
+                      //})
                     })
                   }
                 })
@@ -719,30 +730,75 @@ class PuppeteerWhatsApp extends EventEmitter {
     }
   }
 
-  async sendMedia(page, number, args){
+  async sendMessage(page, id, message){
+    var time = 1097
     try {
-      return await page.evaluate((number, args) => {
-        try {
-          if (typeof number === 'string' && number != '') {
-            const get_number = window.Store.Chat.get(number)
-            const clean_number = number.replace(/\D+/g, '')
-            if (typeof get_number.id !== 'undefined' && typeof get_number.id.server !== 'undefined' && get_number.id.server == 'c.us') {
-              window.App.sendSeen(number)
-              try{var option = JSON.parse(args);}
-              catch(e){var option = JSON.parse(JSON.stringify(args));}
-
-              window.App.sendMessage(get_number, '', option)
-
-              return { number: clean_number, option: args, message: 'Send', status_code: 200 }
-            } else return { number: clean_number, option: {}, message: 'isNotNumber', status_code: 304 }
-          } else return { number: null, option: {}, message: 'isNotNumber', status_code: 404 }
-        } catch (e) {
-          return { number: null, args: {}, message: 'ErrorSend', status_code: 504 }
-        }
-      }, number, args)
+      if(typeof id === 'string' && id != ''){
+        setTimeout(() => {
+          return this.setMessage(page, id, message)
+        }, time)
+      }else if (typeof id === 'object' && id.length > 0){
+        var no_ids = id.length
+        var to_time = this.getTimeToSend(no_ids)
+        id.forEach((from) => {
+          setTimeout(() => {
+            new Promise((resolve, reject) => {
+              this.setMessage(page, from, message)
+            })
+          }, time)
+          time += to_time
+        })
+        return no_ids
+      }
     } catch (e) {
-      this.getLog('sendMedia', e)
-      return { number: null, message: 'Close', status_code: 501 }
+      this.getLog('sendMessage', e)
+      return { number: null, message: 'Message Error', status_code: 504 }
+    }
+  }
+
+  async setMessage(page, id, message){
+    try {
+      return await page.evaluate((message, id) => {
+        try {
+          if (typeof id === 'string' && id != '') {
+            const get_id = window.Store.Chat.get(id)
+            if (typeof get_id.id !== 'undefined' && typeof get_id.id.server !== 'undefined' && get_id.id.server == 'c.us') {
+
+              const number = id.replace(/\D+/g, '')
+              const replaceNumber = (message, number) => message.replace(/{number}/g, number)
+              window.App.sendSeen(id)
+
+              if (typeof message === 'string' && message != '') {
+                var message = replaceNumber(message, number)
+                window.App.sendMessage(get_id, message)
+
+              } else if (Array.isArray(message) && message.length > 0) {
+
+                message.forEach(async (data_message) => {
+                  try{var data_message = JSON.parse(data_message);}catch(e){}
+
+                  if (typeof data_message === 'string'){
+                    if(data_message != ''){
+                      var data_message = replaceNumber(data_message, number)
+                      await window.App.sendMessage(get_id, data_message)
+                    }
+                  }else{
+                    await window.App.sendMessage(get_id, '', data_message)
+                  }
+
+                })
+              }
+              return { number: number, message: message, status_code: 200 }
+
+            } else return { number: null, message: 'NaN', status_code: 404 }
+          } else return { number: null, message: 'NaN', status_code: 404 }
+        } catch (e) {
+          return { number: null, message: 'Error', status_code: 504 }
+        }
+      }, message, id)
+    } catch (e) {
+      this.getLog('setMessage', e)
+      return { number: null, message: 'Close', contact: {}, status_code: 501 }
     }
   }
 
@@ -770,44 +826,6 @@ class PuppeteerWhatsApp extends EventEmitter {
     } catch (e) {
       this.getLog('getMedia', e)
       return false
-    }
-  }
-
-  async setMessage(page, id, message){
-    try {
-      return await page.evaluate((message, id) => {
-        try {
-          if (typeof id === 'string' && id != '') {
-            const get_id = window.Store.Chat.get(id)
-            if (typeof get_id.id !== 'undefined' && typeof get_id.id.server !== 'undefined' && get_id.id.server == 'c.us') {
-
-              const number = id.replace(/\D+/g, '')
-              const replaceNumber = (message, number) => message.replace(/{number}/g, number)
-              window.App.sendSeen(id)
-
-              if (typeof message === 'string' && message != '') {
-                var message = replaceNumber(message, number)
-                window.App.sendMessage(get_id, message)
-
-              } else if (Array.isArray(message) && message.length > 0) {
-                message.forEach((data_message) => {
-                  if (typeof data_message === 'string' && data_message != '') {
-                    var message = replaceNumber(data_message, number)
-                    window.App.sendMessage(get_id, data_message)
-                  }
-                })
-              }
-              return { number: number, message: message, status_code: 200 }
-
-            } else return { number: null, message: 'NaN', status_code: 404 }
-          } else return { number: null, message: 'NaN', status_code: 404 }
-        } catch (e) {
-          return { number: null, message: 'Error', status_code: 504 }
-        }
-      }, message, id)
-    } catch (e) {
-      this.getLog('setMessage', e)
-      return { number: null, message: 'Close', contact: {}, status_code: 501 }
     }
   }
 
@@ -983,32 +1001,6 @@ class PuppeteerWhatsApp extends EventEmitter {
     } catch (e) {
       this.getLog('setLogout', e)
       return false
-    }
-  }
-
-  async sendMessage(page, id, message){
-    var time = 1097
-    try {
-      if(typeof id === 'string' && id != ''){
-        setTimeout(() => {
-          return this.setMessage(page, id, message)
-        }, time)
-      }else if (typeof id === 'object' && id.length > 0){
-        var no_ids = id.length
-        var to_time = this.getTimeToSend(no_ids)
-        id.forEach((from) => {
-          setTimeout(() => {
-            new Promise((resolve, reject) => {
-              this.setMessage(page, from, message)
-            })
-          }, time)
-          time += to_time
-        })
-        return no_ids
-      }
-    } catch (e) {
-      this.getLog('sendMessage', e)
-      return { number: null, message: 'Message Error', status_code: 504 }
     }
   }
 
@@ -1289,12 +1281,6 @@ class PuppeteerWhatsApp extends EventEmitter {
                             break
                             case 'message':
                               this.sendMessage(page, number, message).then(response => {
-                                this.sendToWebhook(action, response, data_token)
-                                res.json(response)
-                              })
-                            break
-                            case 'media':
-                              this.sendMedia(page, number, options).then(response => {
                                 this.sendToWebhook(action, response, data_token)
                                 res.json(response)
                               })

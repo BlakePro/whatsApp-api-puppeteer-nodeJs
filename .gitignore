@@ -4,3 +4,4 @@ dbTokenWhatsApp.json
 package-lock.json
 *.out
 /data
+dialogflowBot.php

@@ -43,24 +43,26 @@ if($data != ''){
     //EXAMPLE SEND | FILE (PDF, JPG, PNG, DOCX, STICKER/WEBP)
     /*
       $array_file = ['jpgFile.jpg', 'pdfFile.pdf', 'pngFile.png', 'wordFile.docx', 'stickerFile.webp'];
-      $file = $path_file.$array_file[0];
+      $file_name = $array_file[4];
+      $file = $path_file.$file_name;
       $file_mimetype = mime_content_type($file);
-      $file_content = base64_encode(file_get_contents($file));
-      $attachment = "data:{$file_mimetype};base64,{$file_content}";
+      $attachment = base64_encode(file_get_contents($file));
       $args = [
+        'filename' => $file_name,
+        'attachment' => $attachment,
+        'mimetype' => $file_mimetype,
         'caption' => $caption,
-        'attachment' => $attachment
       ];
       $type_response = 'media';
       $message = json_encode($args, TRUE);
+      //echo $attachment;exit;
     */
 
-
     //EXAMPLE SEND | SINGLE MESSAGE
-
+    /*
       $message = $caption;
       $type_response = 'message';
-  
+    */
 
     //EXAMPLE SEND | MULTIPLE MESSAGE
     /*

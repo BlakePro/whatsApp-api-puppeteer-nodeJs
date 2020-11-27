@@ -53,10 +53,10 @@ exports.WindowUtils = () => {
     };
     window.App.sendMessage = async (chat, content, options = {}) => {
         let attOptions = {};
-        if (options.attachment) {
-            attOptions = await window.App.processMediaData(options.attachment, options.sendAudioAsVoice);
-            content = attOptions.preview;
-            delete options.attachment;
+        if(options.attachment && options.mimetype && options.filename){
+          attOptions = await window.App.processMediaData(options, options.sendAudioAsVoice);
+          content = attOptions.preview;
+          delete options.attachment;
         }
 
         let quotedMsgOptions = {};
@@ -104,15 +104,15 @@ exports.WindowUtils = () => {
         } else if (options.parseVCards && typeof (content) === 'string' && content.startsWith('BEGIN:VCARD')) {
             delete options.parseVCards;
             try {
-                const parsed = window.Store.VCard.parseVcard(content);
-                if (parsed) {
-                    vcardOptions = {
-                        type: 'vcard',
-                        vcardFormattedName: window.Store.VCard.vcardGetNameFromParsed(parsed)
-                    };
-                }
+              const parsed = window.Store.VCard.parseVcard(content);
+              if (parsed) {
+                vcardOptions = {
+                  type: 'vcard',
+                  vcardFormattedName: window.Store.VCard.vcardGetNameFromParsed(parsed)
+                };
+              }
             } catch (_) {
-                // not a vcard
+              // not a vcard
             }
         }
 
@@ -152,11 +152,11 @@ exports.WindowUtils = () => {
         };
 
         await window.Store.SendMessage.addAndSendMsgToChat(chat, message);
-        return window.Store.Msg.get(newMsgId._serialized);
+        return true;//window.Store.Msg.get(newMsgId._serialized);
     };
 
-    window.App.processMediaData = async (mediaInfo, forceVoice) => {
-        const file = window.App.mediaInfoToFile(mediaInfo);
+    window.App.processMediaData = async (options, forceVoice) => {
+        const file = window.App.mediaInfoToFile(options);
         const mData = await window.Store.OpaqueData.createFromData(file, file.type);
         const mediaPrep = window.Store.MediaPrep.prepRawMedia(mData, {});
         const mediaData = await mediaPrep.waitForPrep();
@@ -263,29 +263,32 @@ exports.WindowUtils = () => {
     };
 
     window.App.getContact = contactId => {
-        const contact = window.Store.Contact.get(contactId);
-        return window.App.getContactModel(contact);
+      const contact = window.Store.Contact.get(contactId);
+      return window.App.getContactModel(contact);
     };
 
     window.App.getContacts = () => {
-        const contacts = window.Store.Contact.models;
-        return contacts.map(contact => window.App.getContactModel(contact));
+      const contacts = window.Store.Contact.models;
+      return contacts.map(contact => window.App.getContactModel(contact));
     };
 
-    window.App.mediaInfoToFile = ({ data, mimetype, filename }) => {
-        const binaryData = atob(data);
+    window.App.mediaInfoToFile = (options) => {
+      var base64file = options.attachment;
+      var mimetype = options.mimetype;
+      var filename = options.filename;
+      if(mimetype == 'image/webp')filename = ''
 
-        const buffer = new ArrayBuffer(binaryData.length);
-        const view = new Uint8Array(buffer);
-        for (let i = 0; i < binaryData.length; i++) {
-            view[i] = binaryData.charCodeAt(i);
-        }
-
-        const blob = new Blob([buffer], { type: mimetype });
-        return new File([blob], filename, {
-            type: mimetype,
-            lastModified: Date.now()
-        });
+      const binaryData = window.atob(base64file);
+      const buffer = new ArrayBuffer(binaryData.length);
+      const view = new Uint8Array(buffer);
+      for (let i = 0; i < binaryData.length; i++) {
+        view[i] = binaryData.charCodeAt(i);
+      }
+      const blob = new Blob([buffer]);
+      return new File([blob], filename, {
+          type: mimetype,
+          lastModified: Date.now()
+      });
     };
 
     window.App.downloadBuffer = (url) => {
