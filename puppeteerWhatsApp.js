@@ -584,10 +584,10 @@ class PuppeteerWhatsApp extends EventEmitter {
                     if(message.id.fromMe)var number = message.to;
                     else var number = message.from;
 
-                    WhatsApp.getContact(page, number).then(contact => {
+                    //WhatsApp.getContact(page, number).then(contact => {
                       //WhatsApp.getProfilePicThumb(page, number).then(picture => {
                         //message.picture = picture
-                        message.contact = contact
+                        //message.contact = contact
 
                         //SEND TO BOT
                         var send = {
@@ -620,7 +620,7 @@ class PuppeteerWhatsApp extends EventEmitter {
                         } catch (e) { if(APP_DEBUG)console.log(e) }
                         //BOT RESPONSE
                       //})
-                    })
+                    //})
                   }
                 })
               }
