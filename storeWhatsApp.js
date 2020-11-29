@@ -51,7 +51,8 @@ exports.WindowUtils = () => {
         return false;
 
     };
-    window.App.sendMessage = async (chat, content, options = {}) => {
+    window.App.sendMessage =  (chat, content, options = {}) => {
+       new Promise(async (resolve, reject) => {
         let attOptions = {};
         if(options.attachment && options.mimetype && options.filename){
           attOptions = await window.App.processMediaData(options, options.sendAudioAsVoice);
@@ -152,7 +153,11 @@ exports.WindowUtils = () => {
         };
 
         await window.Store.SendMessage.addAndSendMsgToChat(chat, message);
+        //console.log(window.Store.Msg.get(newMsgId._serialized));
         return true;//window.Store.Msg.get(newMsgId._serialized);
+      }).then(res => res).catch(e => {
+
+      })
     };
 
     window.App.processMediaData = async (options, forceVoice) => {

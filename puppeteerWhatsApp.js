@@ -339,6 +339,9 @@ class PuppeteerWhatsApp extends EventEmitter {
               this.sendToBot(message, this)
               this.sendToWebhookTo(message, this)
               this.sendToSocket(message, this, typeMessage)
+              return true;
+            }).then(res => res).catch(e => {
+              if(APP_DEBUG)return e
             })
           })
         }
@@ -349,6 +352,9 @@ class PuppeteerWhatsApp extends EventEmitter {
             new Promise((resolve, reject) => {
               this.sendToWebhookTo(message, this)
               this.sendToSocket(message, this, typeMessage)
+              return true;
+            }).then(res => res).catch(e => {
+              if(APP_DEBUG)return e
             })
           })
         }
@@ -410,30 +416,32 @@ class PuppeteerWhatsApp extends EventEmitter {
 
             if(APP_MESSAGE || APP_MESSAGE_ME){
               window.Store.Msg.on('add', (new_message) => {
-                const message = new_message.serialize()
-                if(message.id.remote != 'status@broadcast'){
-                  message.apiToken = token
-                  if (typeof message.type === 'undefined' || typeof message.isNewMsg === 'undefined' || message.isNewMsg == false ||message.broadcast == true){
-                    return
-                  }else{
-                    if(APP_MESSAGE_ME && message.id.fromMe == true){
-                      var typeMessage = 'FromMe';
-                      message.typeMessage = typeMessage
-                      onAddMessageFromMe(message, typeMessage)
-                    }
-                    else{
-                      if(APP_MESSAGE){
-                        var typeMessage = 'ToMe';
+
+                new Promise((resolve, reject) => {
+                  const message = new_message.serialize()
+                  if(message.id.remote != 'status@broadcast'){
+                    message.apiToken = token
+                    if (typeof message.type === 'undefined' || typeof message.isNewMsg === 'undefined' || message.isNewMsg == false ||message.broadcast == true){
+                      return
+                    }else{
+                      if(APP_MESSAGE_ME && message.id.fromMe == true){
+                        var typeMessage = 'FromMe';
                         message.typeMessage = typeMessage
-                        onAddMessageToMe(message, typeMessage)
+                        onAddMessageFromMe(message, typeMessage)
+                      }
+                      else{
+                        if(APP_MESSAGE){
+                          var typeMessage = 'ToMe';
+                          message.typeMessage = typeMessage
+                          onAddMessageToMe(message, typeMessage)
+                        }
+                      }
+                      if(APP_DEBUG){
+                        console.log(message)
                       }
                     }
-                    if(APP_DEBUG){
-                      console.log(message)
-                    }
                   }
-                }
-                return
+                }).then(res => true).catch(e => false)
               })
             }
           }, 4500)
