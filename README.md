@@ -1,5 +1,5 @@
 > [!CAUTION]
-> This is no longer supported, please consider using [whatsapp-web.js-api-rest](https://github.com/BlakePro/whatsapp-web.js-api-rest) instead
+> This is no longer supported, please consider using [whatsapp-web-api-rest](https://github.com/BlakePro/whatsapp-web-api-rest) instead
 
 # Unofficial API for WhatsApp
 
