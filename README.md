@@ -1,13 +1,7 @@
 > [!CAUTION]
 > This is no longer supported, please consider using [whatsapp-web.js-api-rest](https://github.com/BlakePro/whatsapp-web.js-api-rest) instead
 
-<p align="center">
-  <a href="https://github.com/BlakePro/WhatsAppApiNodeJS">
-    <img src="mediaBot/Api_WhatsApp_Bot.png" alt="Api WhatsApp Bot Unofficial" width="140" height="140">
-  </a>
-  <h1 align="center">Unofficial API for WhatsApp</h1>
-  <h3 align="center">(Bot / Webhook / Socket)</h3>
-</p>
+# Unofficial API for WhatsApp
 
 ## Table of Contents
 
